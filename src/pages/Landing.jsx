@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Shield, Database, Hash, BarChart2, ArrowRight } from 'lucide-react'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
@@ -65,28 +66,30 @@ const templates = [
 ]
 
 export default function Landing() {
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
+  const isMobile  = useIsMobile()
 
   return (
     <main
       style={{
-        height: 'calc(100vh - 64px)',
-        overflowY: 'scroll',
-        scrollSnapType: 'y mandatory',
+        height: isMobile ? 'auto' : 'calc(100vh - 64px)',
+        overflowY: isMobile ? 'visible' : 'scroll',
+        scrollSnapType: isMobile ? 'none' : 'y mandatory',
         scrollBehavior: 'smooth',
       }}
     >
       {/* ── Hero ── */}
       <section
         style={{
-          height: '100%',
+          height: isMobile ? 'auto' : '100%',
+          minHeight: isMobile ? 'calc(100vh - 64px)' : 'unset',
           scrollSnapAlign: 'start',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'column',
           textAlign: 'center',
-          padding: '0 24px',
+          padding: isMobile ? '80px 20px' : '0 24px',
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -94,10 +97,8 @@ export default function Landing() {
         {/* Radial glow */}
         <div
           style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(ellipse 70% 55% at 50% 42%, rgba(0,212,255,0.04) 0%, transparent 70%)',
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(ellipse 70% 55% at 50% 42%, rgba(0,212,255,0.04) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -108,7 +109,7 @@ export default function Landing() {
             style={{
               fontFamily: 'Syne, sans-serif',
               fontWeight: 700,
-              fontSize: 'clamp(1.8rem, 3.5vw, 3.2rem)',
+              fontSize: isMobile ? 'clamp(2rem, 8vw, 4rem)' : 'clamp(1.8rem, 3.5vw, 3.2rem)',
               color: '#f8fafc',
               lineHeight: 1.1,
               letterSpacing: '-0.02em',
@@ -123,7 +124,7 @@ export default function Landing() {
             style={{
               fontFamily: 'DM Sans, sans-serif',
               color: '#64748b',
-              fontSize: '1.15rem',
+              fontSize: isMobile ? '1rem' : '1.15rem',
               lineHeight: 1.65,
               marginBottom: '40px',
               maxWidth: '600px',
@@ -157,21 +158,26 @@ export default function Landing() {
 
           <motion.div
             {...fadeUp(0.2)}
-            style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}
+            style={{
+              display: 'flex',
+              gap: isMobile ? '12px' : '16px',
+              justifyContent: 'center',
+              flexDirection: isMobile ? 'column' : 'row',
+              width: isMobile ? '100%' : 'auto',
+              maxWidth: isMobile ? '340px' : 'unset',
+              margin: isMobile ? '0 auto' : '0',
+            }}
           >
             <button
               onClick={() => navigate('/builder')}
               style={{
-                background: '#00d4ff',
-                color: '#0a0a0f',
-                fontWeight: 700,
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: '1rem',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '14px 28px',
-                cursor: 'pointer',
+                background: '#00d4ff', color: '#0a0a0f',
+                fontWeight: 700, fontFamily: 'DM Sans, sans-serif',
+                fontSize: '1rem', border: 'none', borderRadius: '8px',
+                padding: '14px 28px', cursor: 'pointer',
                 transition: 'opacity 0.2s',
+                width: isMobile ? '100%' : 'auto',
+                minHeight: 44,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
@@ -181,16 +187,13 @@ export default function Landing() {
             <button
               onClick={() => navigate('/admin')}
               style={{
-                background: 'transparent',
-                border: '1px solid #1e2130',
-                color: '#f8fafc',
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: '1rem',
-                fontWeight: 500,
-                borderRadius: '8px',
-                padding: '14px 28px',
-                cursor: 'pointer',
+                background: 'transparent', border: '1px solid #1e2130',
+                color: '#f8fafc', fontFamily: 'DM Sans, sans-serif',
+                fontSize: '1rem', fontWeight: 500, borderRadius: '8px',
+                padding: '14px 28px', cursor: 'pointer',
                 transition: 'border-color 0.2s',
+                width: isMobile ? '100%' : 'auto',
+                minHeight: 44,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
               onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
@@ -204,184 +207,146 @@ export default function Landing() {
       {/* ── Features ── */}
       <section
         style={{
-          minHeight: '100%',
+          minHeight: isMobile ? 'unset' : '100%',
           scrollSnapAlign: 'start',
           display: 'flex',
           alignItems: 'center',
           width: '100%',
         }}
       >
-      <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '80px 24px' }}>
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          style={{
-            fontFamily: 'Syne, sans-serif',
-            fontWeight: 800,
-            fontSize: '2rem',
-            color: '#f8fafc',
-            marginBottom: '40px',
-            textAlign: 'center',
-          }}
-        >
-          Built for Modern Teams
-        </motion.h2>
+        <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '60px 20px' : '80px 24px' }}>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            style={{
+              fontFamily: 'Syne, sans-serif', fontWeight: 800,
+              fontSize: isMobile ? '1.6rem' : '2rem',
+              color: '#f8fafc', marginBottom: '40px', textAlign: 'center',
+            }}
+          >
+            Built for Modern Teams
+          </motion.h2>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '20px',
-          }}
-        >
-          {featureCards.map(({ icon: Icon, title, desc }, i) => (
-            <motion.div
-              key={title}
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              style={{
-                background: '#0f1117',
-                border: '1px solid #1e2130',
-                borderRadius: '12px',
-                padding: '24px',
-              }}
-            >
-              <Icon size={28} color="#00d4ff" style={{ marginBottom: '16px' }} />
-              <h3
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '20px',
+            }}
+          >
+            {featureCards.map(({ icon: Icon, title, desc }, i) => (
+              <motion.div
+                key={title}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
                 style={{
-                  fontFamily: 'Syne, sans-serif',
-                  fontWeight: 700,
-                  color: '#f8fafc',
-                  fontSize: '1.05rem',
-                  marginBottom: '8px',
+                  background: '#0f1117', border: '1px solid #1e2130',
+                  borderRadius: '12px', padding: '24px',
                 }}
               >
-                {title}
-              </h3>
-              <p
-                style={{
-                  fontFamily: 'DM Sans, sans-serif',
-                  color: '#64748b',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.6,
-                }}
-              >
-                {desc}
-              </p>
-            </motion.div>
-          ))}
+                <Icon size={28} color="#00d4ff" style={{ marginBottom: '16px' }} />
+                <h3 style={{
+                  fontFamily: 'Syne, sans-serif', fontWeight: 700,
+                  color: '#f8fafc', fontSize: '1.05rem', marginBottom: '8px',
+                }}>
+                  {title}
+                </h3>
+                <p style={{
+                  fontFamily: 'DM Sans, sans-serif', color: '#64748b',
+                  fontSize: '0.9rem', lineHeight: 1.6,
+                }}>
+                  {desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </div>
       </section>
 
       {/* ── Templates + Footer ── */}
       <section
         style={{
-          minHeight: '100%',
+          minHeight: isMobile ? 'unset' : '100%',
           scrollSnapAlign: 'start',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          width: '100%',
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', width: '100%',
         }}
       >
-      <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '80px 24px 0' }}>
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          style={{
-            fontFamily: 'Syne, sans-serif',
-            fontWeight: 800,
-            fontSize: '2rem',
-            color: '#f8fafc',
-            marginBottom: '32px',
-            textAlign: 'center',
-          }}
-        >
-          Start from a template
-        </motion.h2>
+        <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '60px 20px 0' : '80px 24px 0' }}>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            style={{
+              fontFamily: 'Syne, sans-serif', fontWeight: 800,
+              fontSize: isMobile ? '1.6rem' : '2rem',
+              color: '#f8fafc', marginBottom: '32px', textAlign: 'center',
+            }}
+          >
+            Start from a template
+          </motion.h2>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '20px',
-          }}
-        >
-          {templates.map(({ accent, title, desc }, i) => (
-            <motion.div
-              key={title}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              onClick={() => navigate('/builder')}
-              style={{
-                background: '#0f1117',
-                border: '1px solid #1e2130',
-                borderLeft: `3px solid ${accent}`,
-                borderRadius: '12px',
-                padding: '20px 24px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-                transition: 'border-color 0.2s',
-              }}
-              whileHover={{ scale: 1.015 }}
-            >
-              <div>
-                <h3
-                  style={{
-                    fontFamily: 'Syne, sans-serif',
-                    fontWeight: 700,
-                    color: '#f8fafc',
-                    fontSize: '1rem',
-                    marginBottom: '6px',
-                  }}
-                >
-                  {title}
-                </h3>
-                <p
-                  style={{
-                    fontFamily: 'DM Sans, sans-serif',
-                    color: '#64748b',
-                    fontSize: '0.875rem',
-                    lineHeight: 1.55,
-                  }}
-                >
-                  {desc}
-                </p>
-              </div>
-              <ArrowRight size={18} color="#64748b" style={{ flexShrink: 0 }} />
-            </motion.div>
-          ))}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+              gap: '16px',
+            }}
+          >
+            {templates.map(({ accent, title, desc }, i) => (
+              <motion.div
+                key={title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: isMobile ? 0 : i * 0.1 }}
+                onClick={() => navigate('/builder')}
+                style={{
+                  background: '#0f1117', border: '1px solid #1e2130',
+                  borderLeft: `3px solid ${accent}`, borderRadius: '12px',
+                  padding: '18px 20px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'space-between', gap: '16px',
+                  transition: 'border-color 0.2s',
+                  minHeight: 44,
+                }}
+                whileHover={{ scale: 1.015 }}
+              >
+                <div>
+                  <h3 style={{
+                    fontFamily: 'Syne, sans-serif', fontWeight: 700,
+                    color: '#f8fafc', fontSize: '1rem', marginBottom: '6px',
+                  }}>
+                    {title}
+                  </h3>
+                  <p style={{
+                    fontFamily: 'DM Sans, sans-serif', color: '#64748b',
+                    fontSize: '0.875rem', lineHeight: 1.55,
+                  }}>
+                    {desc}
+                  </p>
+                </div>
+                <ArrowRight size={18} color="#64748b" style={{ flexShrink: 0 }} />
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <footer
-        style={{
-          borderTop: '1px solid #1e2130',
-          padding: '40px 24px',
-          textAlign: 'center',
-          marginTop: 'auto',
-        }}
-      >
-        <p
+        <footer
           style={{
-            fontFamily: 'DM Sans, sans-serif',
-            color: '#475569',
-            fontSize: '14px',
+            borderTop: '1px solid #1e2130',
+            padding: isMobile ? '32px 20px' : '40px 24px',
+            textAlign: 'center',
+            marginTop: 'auto',
           }}
         >
-          Built by{' '}
+          <p style={{ fontFamily: 'DM Sans, sans-serif', color: '#475569', fontSize: '14px' }}>
+            Built by{' '}
             <a
               href="https://x.com/xshephrd"
               target="_blank"
@@ -392,8 +357,8 @@ export default function Landing() {
             >
               Shepherd
             </a>
-        </p>
-      </footer>
+          </p>
+        </footer>
       </section>
     </main>
   )

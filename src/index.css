@@ -72,3 +72,10 @@ body::after {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Prevent horizontal overflow on mobile */
+@media (max-width: 767px) {
+  body {
+    overflow-x: hidden;
+  }
+}

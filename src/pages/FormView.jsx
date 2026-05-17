@@ -8,6 +8,7 @@ import {
   CheckCircle, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 // ─── Shared input style ───────────────────────────────────────────────────────
 
@@ -278,6 +279,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError }) {
 function ShareBar({ url }) {
   const [open, setOpen]     = useState(false)
   const [copied, setCopied] = useState(false)
+  const isMobile            = useIsMobile()
 
   const copyLink = () => {
     navigator.clipboard.writeText(url).catch(() => {})
@@ -316,7 +318,7 @@ function ShareBar({ url }) {
 
       {open && (
         <div style={{ borderTop: '1px solid #1e2130', padding: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexDirection: isMobile ? 'column' : 'row' }}>
             <input
               readOnly
               value={url}
@@ -338,12 +340,15 @@ function ShareBar({ url }) {
                 fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
                 cursor: 'pointer', whiteSpace: 'nowrap',
                 transition: 'all 0.15s',
+                width: isMobile ? '100%' : undefined,
               }}
             >
               {copied ? 'Copied!' : 'Copy Link'}
             </button>
           </div>
-          <QRCodeCanvas url={url} />
+          <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
+            <QRCodeCanvas url={url} />
+          </div>
         </div>
       )}
     </div>
@@ -531,6 +536,7 @@ export default function FormView() {
   const { id }   = useParams()
   const navigate = useNavigate()
 
+  const isMobile                    = useIsMobile()
   const [form, setForm]             = useState(null)
   const [loading, setLoading]       = useState(true)
   const [notFound, setNotFound]     = useState(false)
@@ -695,13 +701,13 @@ export default function FormView() {
   // ── Form ───────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: 'calc(100vh - 64px)' }}>
-      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '60px 24px 80px' }}>
+      <div style={{ maxWidth: '680px', margin: '0 auto', padding: isMobile ? '32px 16px 60px' : '60px 24px 80px' }}>
 
         {/* Form header */}
         <div style={{ marginBottom: '40px' }}>
           <h1 style={{
             fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            fontSize: '2rem', color: '#f8fafc', marginBottom: '10px',
+            fontSize: isMobile ? '1.5rem' : '2rem', color: '#f8fafc', marginBottom: '10px',
           }}>
             {form.title || 'Untitled Form'}
           </h1>
@@ -769,6 +775,7 @@ export default function FormView() {
               style={{
                 width: '100%', background: '#00d4ff', border: 'none',
                 borderRadius: '8px', padding: '16px',
+                minHeight: isMobile ? 52 : undefined,
                 color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
                 fontSize: '16px', fontWeight: 700,
                 cursor: submitting ? 'default' : 'pointer',

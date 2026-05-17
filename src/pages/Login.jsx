@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const TuskLogo = () => (
   <svg width="28" height="49" viewBox="0 0 48 88" xmlns="http://www.w3.org/2000/svg">
@@ -19,6 +20,8 @@ export default function Login() {
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
+
+  const isMobile = useIsMobile()
 
   const [emailFocused,    setEmailFocused]    = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
@@ -55,14 +58,14 @@ export default function Login() {
       minHeight: 'calc(100vh - 64px)',
       background: '#0a0a0f',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '40px 24px',
+      padding: isMobile ? '24px 16px' : '40px 24px',
     }}>
       <div style={{
         width: '100%', maxWidth: '420px',
         background: '#0f1117',
         border: '1px solid #1e2130',
         borderRadius: '16px',
-        padding: '40px',
+        padding: isMobile ? '28px 20px' : '40px',
       }}>
         {/* Logo */}
         <div style={{

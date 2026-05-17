@@ -15,7 +15,8 @@
       "Bash(npm install *)",
       "Bash(Start-Process *)",
       "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"cd /d C:\\\\Users\\\\loyal\\\\tusk && npx vite --port 5173\" -WindowStyle Hidden)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(npx vite *)"
     ]
   }
 }

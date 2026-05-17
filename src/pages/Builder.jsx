@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useIsMobile } from '../hooks/useIsMobile'
 import {
   Type, AlignLeft, ChevronDown, CheckSquare, Star, Upload, Link, Hash,
   FileText, GripVertical, Trash2, X, Plus, Eye,
@@ -341,16 +342,17 @@ function FieldCard({ field, isSelected, onSelect, onDelete, onUpdate, onDragStar
 
 // ─── Left sidebar ─────────────────────────────────────────────────────────────
 
-function LeftSidebar({ onAddField, onLoadTemplate }) {
+function LeftSidebar({ onAddField, onLoadTemplate, mobile = false }) {
   const [hoveredType, setHoveredType]         = useState(null)
   const [hoveredTemplate, setHoveredTemplate] = useState(null)
 
   return (
     <aside style={{
-      width: 260, flexShrink: 0,
+      width: mobile ? '100%' : 260,
+      flexShrink: mobile ? undefined : 0,
       background: '#0f1117',
-      borderRight: '1px solid #1e2130',
-      overflowY: 'auto',
+      borderRight: mobile ? 'none' : '1px solid #1e2130',
+      overflowY: mobile ? 'visible' : 'auto',
     }}>
       <div style={{ padding: '20px 14px' }}>
         <p style={{ ...S.sectionHeader, marginBottom: '12px' }}>Add Fields</p>
@@ -417,16 +419,32 @@ function LeftSidebar({ onAddField, onLoadTemplate }) {
 
 // ─── Right settings panel ─────────────────────────────────────────────────────
 
-function RightPanel({ field, onUpdate }) {
+function RightPanel({ field, onUpdate, mobile = false, onBack }) {
   if (!field) {
     return (
       <aside style={{
-        width: 280, flexShrink: 0,
+        width: mobile ? '100%' : 280,
+        flexShrink: mobile ? undefined : 0,
         background: '#0f1117',
-        borderLeft: '1px solid #1e2130',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', padding: '24px',
+        borderLeft: mobile ? 'none' : '1px solid #1e2130',
+        display: 'flex', flexDirection: 'column',
+        alignItems: mobile ? undefined : 'center',
+        justifyContent: mobile ? undefined : 'center',
+        padding: '24px',
       }}>
+        {mobile && onBack && (
+          <button
+            onClick={onBack}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+              padding: 0, display: 'flex', alignItems: 'center', gap: '6px',
+              marginBottom: '24px', alignSelf: 'flex-start',
+            }}
+          >
+            ← Back to Canvas
+          </button>
+        )}
         <p style={{
           fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
           color: '#475569', textAlign: 'center', lineHeight: 1.6,
@@ -442,12 +460,26 @@ function RightPanel({ field, onUpdate }) {
 
   return (
     <aside style={{
-      width: 280, flexShrink: 0,
+      width: mobile ? '100%' : 280,
+      flexShrink: mobile ? undefined : 0,
       background: '#0f1117',
-      borderLeft: '1px solid #1e2130',
-      overflowY: 'auto',
+      borderLeft: mobile ? 'none' : '1px solid #1e2130',
+      overflowY: mobile ? 'visible' : 'auto',
     }}>
       <div style={{ padding: '20px 16px' }}>
+        {mobile && onBack && (
+          <button
+            onClick={onBack}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+              padding: 0, display: 'flex', alignItems: 'center', gap: '6px',
+              marginBottom: '20px',
+            }}
+          >
+            ← Back to Canvas
+          </button>
+        )}
         <p style={{ ...S.sectionHeader, marginBottom: '20px' }}>Field Settings</p>
 
         {/* Label */}
@@ -582,13 +614,15 @@ function RightPanel({ field, onUpdate }) {
 // ─── Builder page ─────────────────────────────────────────────────────────────
 
 export default function Builder() {
-  const { user } = useAuth()
+  const { user }   = useAuth()
+  const isMobile   = useIsMobile()
 
-  const [formTitle, setFormTitle]           = useState('')
-  const [fields, setFields]                 = useState([])
+  const [formTitle, setFormTitle]             = useState('')
+  const [fields, setFields]                   = useState([])
   const [selectedFieldId, setSelectedFieldId] = useState(null)
-  const [draggedId, setDraggedId]           = useState(null)
-  const [publishing, setPublishing]         = useState(false)
+  const [draggedId, setDraggedId]             = useState(null)
+  const [publishing, setPublishing]           = useState(false)
+  const [activeTab, setActiveTab]             = useState('canvas')
 
   const selectedField = fields.find((f) => f.id === selectedFieldId) ?? null
 
@@ -636,6 +670,170 @@ export default function Builder() {
     window.open('/form/preview', '_blank')
   }
 
+  // ── Mobile layout ─────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', background: '#0f1117', overflow: 'hidden' }}>
+
+        {/* Top bar */}
+        <div style={{
+          height: 56, padding: '0 16px', borderBottom: '1px solid #1e2130',
+          display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+        }}>
+          <input
+            value={formTitle}
+            onChange={(e) => setFormTitle(e.target.value)}
+            placeholder="Untitled Form"
+            style={{
+              background: 'transparent', border: 'none', color: '#f8fafc',
+              fontFamily: 'Syne, sans-serif', fontSize: '16px', fontWeight: 700,
+              outline: 'none', flexGrow: 1, minWidth: 0,
+            }}
+          />
+          <button
+            onClick={preview}
+            style={{
+              background: 'transparent', border: '1px solid #1e2130',
+              color: '#f8fafc', fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+              borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+              transition: 'border-color 0.15s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+          >
+            <Eye size={14} />
+          </button>
+          <button
+            onClick={publish}
+            disabled={publishing}
+            onMouseEnter={(e) => !publishing && (e.currentTarget.style.opacity = '0.88')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            style={{
+              background: '#00d4ff', border: 'none', color: '#0a0a0f',
+              fontFamily: 'DM Sans, sans-serif', fontSize: '12px', fontWeight: 700,
+              borderRadius: 8, padding: '6px 14px',
+              cursor: publishing ? 'default' : 'pointer', opacity: publishing ? 0.8 : 1,
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+              transition: 'opacity 0.15s',
+            }}
+          >
+            {publishing ? (
+              <>
+                <span style={{
+                  width: 10, height: 10,
+                  border: '2px solid rgba(10,10,15,0.3)',
+                  borderTopColor: '#0a0a0f', borderRadius: '50%',
+                  display: 'inline-block', animation: 'spin 0.65s linear infinite',
+                }} />
+                Publishing…
+              </>
+            ) : 'Publish →'}
+          </button>
+        </div>
+
+        {/* Tab bar */}
+        <div style={{
+          display: 'flex', height: 44, background: '#0a0a0f',
+          borderBottom: '1px solid #1e2130', flexShrink: 0,
+        }}>
+          {[
+            { key: 'fields',   label: 'Fields' },
+            { key: 'canvas',   label: 'Canvas' },
+            { key: 'settings', label: 'Settings' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              style={{
+                flex: 1, background: 'transparent', border: 'none',
+                borderBottom: `2px solid ${activeTab === key ? '#00d4ff' : 'transparent'}`,
+                color: activeTab === key ? '#00d4ff' : '#64748b',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '13px', fontWeight: 500,
+                cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {activeTab === 'fields' && (
+            <LeftSidebar
+              mobile
+              onAddField={(type) => { addField(type); setActiveTab('canvas') }}
+              onLoadTemplate={(name) => { loadTemplate(name); setActiveTab('canvas') }}
+            />
+          )}
+
+          {activeTab === 'canvas' && (
+            <div style={{ padding: '16px' }}>
+              {fields.length === 0 ? (
+                <div style={{ textAlign: 'center', paddingTop: '60px' }}>
+                  <p style={{ fontFamily: 'Syne, sans-serif', fontSize: '14px', color: '#475569', lineHeight: 1.6 }}>
+                    Tap + to add fields<br />or switch to the Fields tab
+                  </p>
+                </div>
+              ) : (
+                <div onDragEnd={() => setDraggedId(null)}>
+                  {fields.map((field) => (
+                    <FieldCard
+                      key={field.id}
+                      field={field}
+                      isSelected={selectedFieldId === field.id}
+                      onSelect={() => { setSelectedFieldId(field.id); setActiveTab('settings') }}
+                      onDelete={() => deleteField(field.id)}
+                      onUpdate={(changes) => updateField(field.id, changes)}
+                      onDragStart={() => setDraggedId(field.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        if (draggedId && draggedId !== field.id) {
+                          setFields((prev) => reorder(prev, draggedId, field.id))
+                        }
+                        setDraggedId(null)
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              <div style={{ height: 80 }} />
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <RightPanel
+              mobile
+              onBack={() => setActiveTab('canvas')}
+              field={selectedField}
+              onUpdate={(changes) => selectedField && updateField(selectedField.id, changes)}
+            />
+          )}
+        </div>
+
+        {/* FAB — only on canvas tab */}
+        {activeTab === 'canvas' && (
+          <button
+            onClick={() => setActiveTab('fields')}
+            style={{
+              position: 'fixed', bottom: 24, right: 24,
+              width: 52, height: 52, borderRadius: '50%',
+              background: '#00d4ff', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 4px 20px rgba(0,212,255,0.35)',
+            }}
+          >
+            <Plus size={24} color="#0a0a0f" />
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  // ── Desktop layout ─────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
 
