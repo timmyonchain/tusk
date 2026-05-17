@@ -21,8 +21,6 @@ const FIELD_TYPES = [
   { type: 'number',      label: 'Number',      icon: Hash },
 ]
 
-const TEMPLATE_NAMES = ['Bug Report', 'Feature Request', 'Survey', 'Hackathon Application', 'Creator Application', 'User Feedback', 'Event Registration', 'Job Application']
-
 let _fid = 0
 const makeField = (type, label, opts = {}) => ({
   id: `f_${Date.now()}_${++_fid}`,
@@ -35,77 +33,99 @@ const makeField = (type, label, opts = {}) => ({
   acceptedTypes: opts.acceptedTypes ?? [],
 })
 
-const TEMPLATE_FIELDS = {
-  'Bug Report': () => [
-    makeField('short-text',  'Title',               { required: true }),
-    makeField('long-text',   'Description',          { required: true }),
-    makeField('dropdown',    'Severity',             { required: true, options: ['Low', 'Medium', 'High', 'Critical'] }),
-    makeField('long-text',   'Steps to Reproduce'),
-    makeField('file-upload', 'Screenshot'),
-    makeField('short-text',  'Your Wallet Address'),
-  ],
-  'Feature Request': () => [
-    makeField('short-text',  'Feature Title',       { required: true }),
-    makeField('long-text',   'Problem it Solves',   { required: true }),
-    makeField('star-rating', 'Priority'),
-    makeField('long-text',   'Additional Context'),
-    makeField('short-text',  'Your Wallet Address'),
-  ],
-  'Survey': () => [
-    makeField('short-text',  'Name'),
-    makeField('star-rating', 'Overall Satisfaction', { required: true }),
-    makeField('long-text',   'What did you like?'),
-    makeField('long-text',   'What can be improved?'),
-    makeField('dropdown',    'Recommend to others?', { options: ['Yes', 'No', 'Maybe'] }),
-  ],
-  'Hackathon Application': () => [
-    makeField('short-text',  'Project Name',        { required: true }),
-    makeField('short-text',  'Team Name'),
-    makeField('long-text',   'Project Description', { required: true }),
-    makeField('url',         'Demo URL',            { required: true }),
-    makeField('url',         'Repo URL',            { required: true }),
-    makeField('dropdown',    'Track',               { required: true, options: ['Builder Tools', 'DeFi', 'Gaming', 'Other'] }),
-    makeField('url',         'Video Link'),
-    makeField('short-text',  'Wallet Address',      { required: true }),
-  ],
-  'Creator Application': () => [
-    makeField('short-text',  'Full Name',                          { required: true }),
-    makeField('short-text',  'Email',                             { required: true }),
-    makeField('url',         'Twitter/X Handle'),
-    makeField('url',         'Portfolio or Website'),
-    makeField('long-text',   'Why do you want to collaborate?',   { required: true }),
-    makeField('long-text',   'What can you bring to the table?',  { required: true }),
-    makeField('dropdown',    'Type of collaboration',             { required: true, options: ['Sponsored Content', 'Co-creation', 'Shoutout', 'Other'] }),
-  ],
-  'User Feedback': () => [
-    makeField('short-text',  'Name'),
-    makeField('short-text',  'Email'),
-    makeField('star-rating', 'How would you rate your experience?', { required: true }),
-    makeField('long-text',   'What did you enjoy most?'),
-    makeField('long-text',   'What can we improve?',              { required: true }),
-    makeField('dropdown',    'Would you recommend us?',           { required: true, options: ['Definitely', 'Maybe', 'Probably Not'] }),
-    makeField('long-text',   'Any other thoughts?'),
-  ],
-  'Event Registration': () => [
-    makeField('short-text',  'Full Name',                { required: true }),
-    makeField('short-text',  'Email',                   { required: true }),
-    makeField('short-text',  'Phone Number'),
-    makeField('dropdown',    'How did you hear about us?', { options: ['Twitter', 'Instagram', 'Friend', 'Other'] }),
-    makeField('short-text',  'Dietary requirements'),
-    makeField('number',      'Number of tickets',        { required: true }),
-    makeField('long-text',   'Special requests'),
-  ],
-  'Job Application': () => [
-    makeField('short-text',  'Full Name',                { required: true }),
-    makeField('short-text',  'Email',                   { required: true }),
-    makeField('short-text',  'Position applying for',   { required: true }),
-    makeField('url',         'LinkedIn Profile'),
-    makeField('url',         'Portfolio/GitHub'),
-    makeField('number',      'Years of experience',     { required: true }),
-    makeField('long-text',   'Tell us about yourself',  { required: true }),
-    makeField('long-text',   'Why do you want this role?', { required: true }),
-    makeField('file-upload', 'Resume/CV',               { required: true }),
-  ],
+const TEMPLATES = {
+  'Bug Report': {
+    title: 'Bug Report',
+    fields: [
+      { id: 'f1', type: 'short-text',  label: 'Title',              placeholder: 'Brief title of the bug',        required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'long-text',   label: 'Description',        placeholder: 'Describe the bug in detail',    required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'dropdown',    label: 'Severity',           placeholder: '',                              required: true,  options: ['Low', 'Medium', 'High', 'Critical'], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'long-text',   label: 'Steps to Reproduce', placeholder: '1. Go to… 2. Click…',          required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'file-upload', label: 'Screenshot',         placeholder: '',                              required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f6', type: 'short-text',  label: 'Your Email',         placeholder: 'your@email.com',               required: false, options: [], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'Feature Request': {
+    title: 'Feature Request',
+    fields: [
+      { id: 'f1', type: 'short-text',  label: 'Feature Title',      placeholder: 'Name your feature idea',        required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'long-text',   label: 'Problem it Solves',  placeholder: 'What problem does this solve?', required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'star-rating', label: 'Priority',           placeholder: '',                              required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'long-text',   label: 'Additional Context', placeholder: 'Any extra details or examples', required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'short-text',  label: 'Your Email',         placeholder: 'your@email.com',               required: false, options: [], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'Survey': {
+    title: 'Survey',
+    fields: [
+      { id: 'f1', type: 'short-text',  label: 'Name',                     placeholder: 'Your full name',                   required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'star-rating', label: 'Overall Satisfaction',      placeholder: '',                                 required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'long-text',   label: 'What did you like?',        placeholder: 'Tell us what went well',           required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'long-text',   label: 'What can be improved?',     placeholder: 'Be honest, we appreciate feedback',required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'dropdown',    label: 'Would you recommend us?',   placeholder: '',                                 required: true,  options: ['Definitely', 'Maybe', 'Probably Not'], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'Hackathon Application': {
+    title: 'Hackathon Application',
+    fields: [
+      { id: 'f1', type: 'short-text', label: 'Project Name',        placeholder: "What's your project called?",    required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'short-text', label: 'Team Name',           placeholder: 'Your team name',                 required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'long-text',  label: 'Project Description', placeholder: "Describe what you're building",  required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'url',        label: 'Demo URL',            placeholder: 'https://',                       required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'url',        label: 'Repository URL',      placeholder: 'https://github.com/…',           required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f6', type: 'dropdown',   label: 'Track',               placeholder: '',                               required: true,  options: ['Builder Tools', 'DeFi', 'Gaming', 'Other'], maxStars: 5, acceptedTypes: [] },
+      { id: 'f7', type: 'url',        label: 'Video Link',          placeholder: 'https://youtube.com/…',          required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f8', type: 'short-text', label: 'Wallet Address',      placeholder: '0x…',                            required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'Creator Application': {
+    title: 'Creator Application',
+    fields: [
+      { id: 'f1', type: 'short-text', label: 'Full Name',                        placeholder: 'Your full name',             required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'short-text', label: 'Email',                            placeholder: 'your@email.com',             required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'url',        label: 'Twitter/X Handle',                 placeholder: 'https://x.com/…',            required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'url',        label: 'Portfolio or Website',             placeholder: 'https://',                   required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'long-text',  label: 'Why do you want to collaborate?',  placeholder: 'Tell us your motivation',    required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f6', type: 'long-text',  label: 'What can you bring to the table?', placeholder: 'Your skills, audience, value',required: true, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f7', type: 'dropdown',   label: 'Type of collaboration',            placeholder: '',                           required: true,  options: ['Sponsored Content', 'Co-creation', 'Shoutout', 'Other'], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'User Feedback': {
+    title: 'User Feedback',
+    fields: [
+      { id: 'f1', type: 'short-text',  label: 'Name',                                  placeholder: 'Your name (optional)',    required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'short-text',  label: 'Email',                                 placeholder: 'your@email.com',          required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'star-rating', label: 'How would you rate your experience?',   placeholder: '',                        required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'long-text',   label: 'What did you enjoy most?',              placeholder: 'What stood out to you?',  required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'long-text',   label: 'What can we improve?',                  placeholder: 'Be honest!',              required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f6', type: 'dropdown',    label: 'Would you recommend us?',               placeholder: '',                        required: true,  options: ['Definitely', 'Maybe', 'Probably Not'], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'Event Registration': {
+    title: 'Event Registration',
+    fields: [
+      { id: 'f1', type: 'short-text', label: 'Full Name',                  placeholder: 'Your full name',        required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'short-text', label: 'Email',                      placeholder: 'your@email.com',        required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'short-text', label: 'Phone Number',               placeholder: '+1 234 567 8900',       required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'dropdown',   label: 'How did you hear about us?', placeholder: '',                      required: false, options: ['Twitter', 'Instagram', 'Friend', 'Other'], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'short-text', label: 'Dietary Requirements',       placeholder: 'Vegan, allergies, etc.',required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f6', type: 'number',     label: 'Number of Tickets',          placeholder: '1',                     required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
+  'Job Application': {
+    title: 'Job Application',
+    fields: [
+      { id: 'f1', type: 'short-text',  label: 'Full Name',              placeholder: 'Your full name',                         required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f2', type: 'short-text',  label: 'Email',                  placeholder: 'your@email.com',                         required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f3', type: 'short-text',  label: 'Position Applying For',  placeholder: 'e.g. Frontend Developer',                required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f4', type: 'url',         label: 'LinkedIn Profile',       placeholder: 'https://linkedin.com/in/…',              required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f5', type: 'url',         label: 'Portfolio / GitHub',     placeholder: 'https://github.com/…',                   required: false, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f6', type: 'number',      label: 'Years of Experience',    placeholder: '3',                                      required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f7', type: 'long-text',   label: 'Tell us about yourself', placeholder: 'Brief intro about who you are',           required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f8', type: 'long-text',   label: 'Why do you want this role?', placeholder: 'What excites you about this position?',required: true, options: [], maxStars: 5, acceptedTypes: [] },
+      { id: 'f9', type: 'file-upload', label: 'Resume / CV',            placeholder: '',                                       required: true,  options: [], maxStars: 5, acceptedTypes: [] },
+    ],
+  },
 }
 
 const getTypeInfo = (type) => FIELD_TYPES.find(ft => ft.type === type)
@@ -390,7 +410,7 @@ function LeftSidebar({ onAddField, onLoadTemplate, mobile = false }) {
         <p style={{ ...S.sectionHeader, marginBottom: '10px' }}>Templates</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {TEMPLATE_NAMES.map((name) => (
+          {Object.keys(TEMPLATES).map((name) => (
             <button
               key={name}
               onClick={() => onLoadTemplate(name)}
@@ -634,10 +654,13 @@ export default function Builder() {
   }
 
   const loadTemplate = (name) => {
-    const tfields = TEMPLATE_FIELDS[name]?.()
-    if (!tfields) return
-    setFields(tfields)
-    setFormTitle(name)
+    const tpl = TEMPLATES[name]
+    if (!tpl) return
+    setFormTitle(tpl.title)
+    setFields(tpl.fields.map(f => ({
+      ...f,
+      id: `f_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    })))
     setSelectedFieldId(null)
   }
 
