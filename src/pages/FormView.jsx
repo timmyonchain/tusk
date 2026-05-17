@@ -1,0 +1,791 @@
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useDropzone } from 'react-dropzone'
+import { toast } from 'react-hot-toast'
+import QRCode from 'qrcode'
+import {
+  Star, Upload, Link as LinkIcon, Share2, Copy,
+  CheckCircle, ChevronDown, ChevronUp,
+} from 'lucide-react'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const generateBlobId = () => {
+  const hex = Array.from({ length: 64 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join('')
+  return `0x${hex}`
+}
+
+const INPUT = {
+  width: '100%',
+  background: '#0f1117',
+  borderRadius: '8px',
+  color: '#f8fafc',
+  fontFamily: 'DM Sans, sans-serif',
+  fontSize: '14px',
+  padding: '12px 16px',
+  outline: 'none',
+  boxSizing: 'border-box',
+  display: 'block',
+  transition: 'border-color 0.15s',
+}
+
+// ─── QR Code canvas ───────────────────────────────────────────────────────────
+
+function QRCodeCanvas({ url }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!ref.current || !url) return
+    QRCode.toCanvas(ref.current, url, {
+      width: 120,
+      margin: 1,
+      color: { dark: '#00d4ff', light: '#0f1117' },
+    }).catch(() => {})
+  }, [url])
+
+  return (
+    <canvas
+      ref={ref}
+      style={{ borderRadius: '8px', border: '1px solid #1e2130' }}
+    />
+  )
+}
+
+// ─── Star Rating ──────────────────────────────────────────────────────────────
+
+function StarRatingField({ field, value, onChange }) {
+  const [hovered, setHovered] = useState(0)
+  const count = field.maxStars || 5
+
+  return (
+    <div style={{ display: 'flex', gap: '8px' }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const n = i + 1
+        const active = n <= (hovered || value || 0)
+        return (
+          <Star
+            key={i}
+            size={32}
+            color={active ? '#00d4ff' : '#475569'}
+            fill={active ? '#00d4ff' : '#1e2130'}
+            style={{ cursor: 'pointer', transition: 'color 0.1s, fill 0.1s' }}
+            onMouseEnter={() => setHovered(n)}
+            onMouseLeave={() => setHovered(0)}
+            onClick={() => onChange(n)}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── File Dropzone ────────────────────────────────────────────────────────────
+
+function FileDropzoneField({ field, value, onChange, error }) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    multiple: false,
+    onDrop: (files) => files[0] && onChange(files[0]),
+  })
+
+  return (
+    <div
+      {...getRootProps()}
+      style={{
+        border: `2px dashed ${isDragActive ? '#00d4ff' : error ? '#ef4444' : '#1e2130'}`,
+        borderRadius: '8px',
+        padding: '32px 24px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        background: isDragActive ? 'rgba(0,212,255,0.04)' : 'transparent',
+        transition: 'border-color 0.2s, background 0.2s',
+      }}
+    >
+      <input {...getInputProps()} />
+      <Upload
+        size={28}
+        color={isDragActive || value ? '#00d4ff' : '#64748b'}
+        style={{ margin: '0 auto 12px', display: 'block' }}
+      />
+      {value ? (
+        <p style={{ color: '#00d4ff', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+          {value.name}
+        </p>
+      ) : (
+        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+          Drop files here or click to upload
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─── URL Field ────────────────────────────────────────────────────────────────
+
+function URLField({ field, value, onChange, onClearError, error }) {
+  const [focused, setFocused] = useState(false)
+
+  return (
+    <div style={{
+      display: 'flex',
+      background: '#0f1117',
+      border: `1px solid ${error ? '#ef4444' : focused ? '#00d4ff' : '#1e2130'}`,
+      borderRadius: '8px',
+      overflow: 'hidden',
+      transition: 'border-color 0.15s',
+    }}>
+      <div style={{
+        padding: '0 14px',
+        display: 'flex', alignItems: 'center',
+        borderRight: '1px solid #1e2130', flexShrink: 0,
+      }}>
+        <LinkIcon size={14} color="#64748b" />
+      </div>
+      <input
+        type="url"
+        value={value || ''}
+        placeholder={field.placeholder || 'https://'}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => { onChange(e.target.value); onClearError() }}
+        style={{
+          flex: 1, background: 'transparent', border: 'none', outline: 'none',
+          padding: '12px 16px', color: '#f8fafc',
+          fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+        }}
+      />
+    </div>
+  )
+}
+
+// ─── Field Renderer ───────────────────────────────────────────────────────────
+
+function FieldRenderer({ field, value, onChange, error, onClearError }) {
+  const border = `1px solid ${error ? '#ef4444' : '#1e2130'}`
+
+  const onFocus = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : '#00d4ff')
+  const onBlur  = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : '#1e2130')
+
+  switch (field.type) {
+    case 'short-text':
+      return (
+        <input
+          type="text"
+          value={value || ''}
+          placeholder={field.placeholder || ''}
+          onFocus={onFocus} onBlur={onBlur}
+          onChange={(e) => { onChange(e.target.value); onClearError() }}
+          style={{ ...INPUT, border }}
+        />
+      )
+
+    case 'long-text':
+      return (
+        <textarea
+          rows={4}
+          value={value || ''}
+          placeholder={field.placeholder || ''}
+          onFocus={onFocus} onBlur={onBlur}
+          onChange={(e) => { onChange(e.target.value); onClearError() }}
+          style={{ ...INPUT, border, resize: 'vertical' }}
+        />
+      )
+
+    case 'dropdown':
+      return (
+        <select
+          value={value || ''}
+          onFocus={onFocus} onBlur={onBlur}
+          onChange={(e) => { onChange(e.target.value); onClearError() }}
+          style={{ ...INPUT, border, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}
+        >
+          <option value="" disabled>Select an option…</option>
+          {field.options.map((opt, i) => (
+            <option key={i} value={opt}>{opt}</option>
+          ))}
+        </select>
+      )
+
+    case 'checkboxes': {
+      const checked = value || []
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {field.options.map((opt, i) => (
+            <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={checked.includes(opt)}
+                onChange={(e) => {
+                  const next = e.target.checked
+                    ? [...checked, opt]
+                    : checked.filter((o) => o !== opt)
+                  onChange(next)
+                  onClearError()
+                }}
+                style={{ accentColor: '#00d4ff', width: 16, height: 16, cursor: 'pointer' }}
+              />
+              <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#f8fafc' }}>
+                {opt}
+              </span>
+            </label>
+          ))}
+        </div>
+      )
+    }
+
+    case 'star-rating':
+      return (
+        <StarRatingField
+          field={field}
+          value={value}
+          onChange={(v) => { onChange(v); onClearError() }}
+          error={error}
+        />
+      )
+
+    case 'file-upload':
+      return (
+        <FileDropzoneField
+          field={field}
+          value={value}
+          onChange={(v) => { onChange(v); onClearError() }}
+          error={error}
+        />
+      )
+
+    case 'url':
+      return (
+        <URLField
+          field={field}
+          value={value}
+          onChange={onChange}
+          onClearError={onClearError}
+          error={error}
+        />
+      )
+
+    case 'number':
+      return (
+        <input
+          type="number"
+          value={value || ''}
+          placeholder={field.placeholder || '0'}
+          onFocus={onFocus} onBlur={onBlur}
+          onChange={(e) => { onChange(e.target.value); onClearError() }}
+          style={{ ...INPUT, border }}
+        />
+      )
+
+    default:
+      return null
+  }
+}
+
+// ─── Share Bar ────────────────────────────────────────────────────────────────
+
+function ShareBar({ url }) {
+  const [open, setOpen]     = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(url).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{
+      marginBottom: '40px',
+      background: '#0f1117',
+      border: '1px solid #1e2130',
+      borderRadius: '10px',
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%', background: 'transparent', border: 'none',
+          padding: '11px 16px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          cursor: 'pointer', color: '#64748b',
+        }}
+      >
+        <Share2 size={14} color="#64748b" />
+        <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#64748b' }}>
+          Share this form
+        </span>
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+          {open
+            ? <ChevronUp size={14} color="#475569" />
+            : <ChevronDown size={14} color="#475569" />
+          }
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ borderTop: '1px solid #1e2130', padding: '16px' }}>
+          {/* URL + copy button */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <input
+              readOnly
+              value={url}
+              style={{
+                flex: 1, background: '#0a0a0f',
+                border: '1px solid #1e2130', borderRadius: '6px',
+                padding: '8px 12px', color: '#94a3b8',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={copyLink}
+              style={{
+                background: copied ? 'rgba(0,212,255,0.12)' : 'transparent',
+                border: `1px solid ${copied ? '#00d4ff' : '#1e2130'}`,
+                borderRadius: '6px', padding: '8px 14px',
+                color: copied ? '#00d4ff' : '#64748b',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                cursor: 'pointer', whiteSpace: 'nowrap',
+                transition: 'all 0.15s',
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy Link'}
+            </button>
+          </div>
+
+          {/* QR Code */}
+          <QRCodeCanvas url={url} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Blob Receipt ─────────────────────────────────────────────────────────────
+
+function BlobReceipt({ blobId, timestamp }) {
+  const [copied, setCopied] = useState(false)
+
+  const copyBlobId = () => {
+    navigator.clipboard.writeText(blobId).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{
+      background: '#0f1117',
+      border: '1px solid rgba(0,212,255,0.4)',
+      borderRadius: '12px',
+      padding: '24px',
+      marginTop: '32px',
+      textAlign: 'left',
+    }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+        <CheckCircle size={14} color="#00d4ff" />
+        <span style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '11px', fontWeight: 600,
+          color: '#00d4ff', letterSpacing: '0.15em', textTransform: 'uppercase',
+        }}>
+          Submission Receipt
+        </span>
+        <span style={{
+          marginLeft: 'auto',
+          background: 'rgba(0,212,255,0.1)', color: '#00d4ff',
+          fontSize: '10px', padding: '2px 10px', borderRadius: '999px',
+          fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+        }}>
+          Stored
+        </span>
+      </div>
+
+      {/* Receipt ID row */}
+      <div style={{ marginBottom: '20px' }}>
+        <p style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '11px',
+          color: '#64748b', marginBottom: '6px',
+        }}>
+          Receipt ID
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <code style={{
+            fontFamily: 'monospace', fontSize: '12px',
+            color: '#00d4ff', flex: 1, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            background: 'rgba(0,212,255,0.06)', padding: '6px 10px', borderRadius: '6px',
+            display: 'block',
+          }}>
+            {blobId}
+          </code>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={copyBlobId}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#00d4ff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
+              style={{
+                background: 'transparent', border: 'none',
+                padding: '6px', color: '#64748b', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', transition: 'color 0.15s',
+              }}
+            >
+              <Copy size={14} />
+            </button>
+            {copied && (
+              <div style={{
+                position: 'absolute', bottom: '100%', left: '50%',
+                transform: 'translateX(-50%)', marginBottom: '4px',
+                background: '#1e2130', color: '#94a3b8',
+                fontSize: '10px', padding: '3px 8px',
+                borderRadius: '4px', whiteSpace: 'nowrap', pointerEvents: 'none',
+              }}>
+                Copied!
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Timestamp */}
+      <div style={{
+        borderTop: '1px solid #1e2130',
+        paddingTop: '16px', marginBottom: '16px',
+      }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
+          Received at
+        </p>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#94a3b8' }}>
+          {new Date(timestamp).toLocaleString()}
+        </p>
+      </div>
+
+    </div>
+  )
+}
+
+// ─── Success Screen ───────────────────────────────────────────────────────────
+
+function SuccessScreen({ submission, onReset, navigate }) {
+  return (
+    <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+      {/* Animated checkmark circle */}
+      <div style={{
+        display: 'inline-block',
+        animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        marginBottom: '28px',
+      }}>
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="38" stroke="#00d4ff" strokeWidth="1.5" />
+          <circle cx="40" cy="40" r="38" fill="rgba(0,212,255,0.06)" />
+          <path
+            d="M 23 40 L 35 52 L 57 28"
+            stroke="#00d4ff"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="100"
+            strokeDashoffset="100"
+            style={{ animation: 'drawCheck 0.45s 0.35s ease forwards' }}
+          />
+        </svg>
+      </div>
+
+      <h2 style={{
+        fontFamily: 'Syne, sans-serif', fontWeight: 700,
+        fontSize: '1.8rem', color: '#f8fafc', marginBottom: '10px',
+      }}>
+        Response Submitted
+      </h2>
+      <p style={{
+        fontFamily: 'DM Sans, sans-serif', fontSize: '15px',
+        color: '#64748b', lineHeight: 1.6,
+      }}>
+        Your response has been received and securely stored.
+      </p>
+
+      <BlobReceipt blobId={submission.blobId} timestamp={submission.submittedAt} />
+
+      {/* Actions */}
+      <div style={{
+        display: 'flex', gap: '12px', marginTop: '28px',
+        justifyContent: 'center', flexWrap: 'wrap',
+      }}>
+        <button
+          onClick={onReset}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+          style={{
+            background: 'transparent', border: '1px solid #1e2130',
+            borderRadius: '8px', padding: '12px 24px',
+            color: '#f8fafc', fontFamily: 'DM Sans, sans-serif',
+            fontSize: '14px', fontWeight: 500,
+            cursor: 'pointer', transition: 'border-color 0.15s',
+          }}
+        >
+          Submit another response
+        </button>
+        <button
+          onClick={() => navigate('/builder')}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#475569' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#1e2130' }}
+          style={{
+            background: 'transparent', border: '1px solid #1e2130',
+            borderRadius: '8px', padding: '12px 24px',
+            color: '#475569', fontFamily: 'DM Sans, sans-serif',
+            fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s',
+          }}
+        >
+          View all forms
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Form View Page ───────────────────────────────────────────────────────────
+
+export default function FormView() {
+  const { id }    = useParams()
+  const navigate  = useNavigate()
+
+  const [form, setForm]             = useState(null)
+  const [notFound, setNotFound]     = useState(false)
+  const [answers, setAnswers]       = useState({})
+  const [errors, setErrors]         = useState({})
+  const [submitting, setSubmitting] = useState(false)
+  const [submission, setSubmission] = useState(null)
+
+  useEffect(() => {
+    if (!id) { setNotFound(true); return }
+
+    let found = null
+    if (id === 'preview') {
+      found = JSON.parse(localStorage.getItem('tusk_preview') || 'null')
+      if (found) found.id = 'preview'
+    } else {
+      const forms = JSON.parse(localStorage.getItem('tusk_forms') || '[]')
+      found = forms.find((f) => f.id === id) ?? null
+    }
+
+    if (found) setForm(found)
+    else setNotFound(true)
+  }, [id])
+
+  const setAnswer    = (fieldId, val) => setAnswers((prev) => ({ ...prev, [fieldId]: val }))
+  const clearError   = (fieldId) => setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n })
+
+  const validate = () => {
+    const errs = {}
+    ;(form.fields || []).forEach((field) => {
+      if (!field.required) return
+      const val = answers[field.id]
+      switch (field.type) {
+        case 'short-text': case 'long-text': case 'number': case 'url':
+          if (!val || String(val).trim() === '') errs[field.id] = true; break
+        case 'dropdown':
+          if (!val) errs[field.id] = true; break
+        case 'checkboxes':
+          if (!val || val.length === 0) errs[field.id] = true; break
+        case 'star-rating':
+          if (!val || val === 0) errs[field.id] = true; break
+        case 'file-upload':
+          if (!val) errs[field.id] = true; break
+      }
+    })
+    return errs
+  }
+
+  const submit = async () => {
+    const errs = validate()
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    setSubmitting(true)
+    await new Promise((r) => setTimeout(r, 2000))
+
+    const blobId = generateBlobId()
+    const now    = new Date().toISOString()
+
+    const serialized = {}
+    Object.entries(answers).forEach(([k, v]) => {
+      serialized[k] = v instanceof File ? v.name : v
+    })
+
+    const sub = {
+      id: `sub_${Date.now()}`,
+      formId: form.id,
+      formTitle: form.title,
+      answers: serialized,
+      submittedAt: now,
+      blobId,
+      status: 'Open',
+    }
+
+    const key  = `tusk_submissions_${form.id}`
+    const prev = JSON.parse(localStorage.getItem(key) || '[]')
+    localStorage.setItem(key, JSON.stringify([...prev, sub]))
+
+    setSubmission(sub)
+    setSubmitting(false)
+  }
+
+  const reset = () => {
+    setAnswers({})
+    setErrors({})
+    setSubmission(null)
+    setSubmitting(false)
+  }
+
+  const shareUrl = `${window.location.origin}/form/${id}`
+
+  // ── Not found ──────────────────────────────────────────────────────────────
+  if (notFound) {
+    return (
+      <div style={{
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: '20px', textAlign: 'center',
+        padding: '40px 24px',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: '#0f1117', border: '1px solid #1e2130',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontSize: '22px', color: '#475569' }}>⚠</span>
+        </div>
+        <p style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '16px',
+          color: '#64748b', maxWidth: '320px', lineHeight: 1.6,
+        }}>
+          Form not found or has been removed.
+        </p>
+        <button
+          onClick={() => navigate('/builder')}
+          style={{
+            background: '#00d4ff', border: 'none', borderRadius: '8px',
+            padding: '12px 28px', color: '#0a0a0f',
+            fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          Go to Builder
+        </button>
+      </div>
+    )
+  }
+
+  if (!form) return null
+
+  // ── Form ───────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ minHeight: 'calc(100vh - 64px)' }}>
+      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '60px 24px 80px' }}>
+
+        {/* Form header */}
+        <div style={{ marginBottom: '40px' }}>
+          <h1 style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            fontSize: '2rem', color: '#f8fafc', marginBottom: '10px',
+          }}>
+            {form.title || 'Untitled Form'}
+          </h1>
+          <p style={{
+            fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+            color: '#475569', marginBottom: '20px', display: 'flex',
+            alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+          }}>
+            Powered by TUSK
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: '#00d4ff', display: 'inline-block', flexShrink: 0,
+            }} />
+            Responses securely stored
+          </p>
+          <div style={{ height: 1, background: 'rgba(0,212,255,0.3)' }} />
+        </div>
+
+        {/* Success or form */}
+        {submission ? (
+          <SuccessScreen submission={submission} onReset={reset} navigate={navigate} />
+        ) : (
+          <>
+            <ShareBar url={shareUrl} />
+
+            {(form.fields || []).map((field) => (
+              <div key={field.id} style={{ marginBottom: '32px' }}>
+                <label style={{
+                  display: 'block',
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '15px', fontWeight: 500,
+                  color: '#f8fafc', marginBottom: '10px',
+                }}>
+                  {field.label}
+                  {field.required && (
+                    <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
+                  )}
+                </label>
+
+                <FieldRenderer
+                  field={field}
+                  value={answers[field.id]}
+                  onChange={(val) => setAnswer(field.id, val)}
+                  error={errors[field.id]}
+                  onClearError={() => clearError(field.id)}
+                />
+
+                {errors[field.id] && (
+                  <p style={{
+                    fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                    color: '#ef4444', marginTop: '6px',
+                  }}>
+                    This field is required
+                  </p>
+                )}
+              </div>
+            ))}
+
+            {/* Submit button */}
+            <button
+              onClick={submit}
+              disabled={submitting}
+              onMouseEnter={(e) => !submitting && (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={(e) => !submitting && (e.currentTarget.style.opacity = '1')}
+              style={{
+                width: '100%', background: '#00d4ff', border: 'none',
+                borderRadius: '8px', padding: '16px',
+                color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
+                fontSize: '16px', fontWeight: 700,
+                cursor: submitting ? 'default' : 'pointer',
+                opacity: submitting ? 0.8 : 1,
+                transition: 'opacity 0.15s',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '10px',
+              }}
+            >
+              {submitting ? (
+                <>
+                  <span style={{
+                    width: 18, height: 18,
+                    border: '2.5px solid rgba(10,10,15,0.3)',
+                    borderTopColor: '#0a0a0f',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    animation: 'spin 0.65s linear infinite',
+                  }} />
+                  Storing your response…
+                </>
+              ) : (
+                'Submit Response →'
+              )}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

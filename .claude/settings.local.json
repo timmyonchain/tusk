@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "PowerShell(npm create *)",
+      "PowerShell(Receive-Job *)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\) — $\\($r.Content.Length\\) bytes returned\" } catch { Write-Output \"Error: $_\" })",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"npx vite --port 5173\" -WorkingDirectory \"C:\\\\Users\\\\loyal\\\\tusk\" -WindowStyle Hidden; Start-Sleep -Seconds 6; try { $r = Invoke-WebRequest -Uri \"http://localhost:5173\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\) — OK\" } catch { Write-Output \"Error: $_\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/builder\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\)\" } catch { Write-Output \"Server not responding — restarting\"; Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"npx vite --port 5173\" -WorkingDirectory \"C:\\\\Users\\\\loyal\\\\tusk\" -WindowStyle Hidden; Start-Sleep -Seconds 6; $r2 = Invoke-WebRequest -Uri \"http://localhost:5173/builder\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r2.StatusCode\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/form/preview\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\) — OK\" } catch { Write-Output \"Restarting...\"; Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"npx vite --port 5173\" -WorkingDirectory \"C:\\\\Users\\\\loyal\\\\tusk\" -WindowStyle Hidden; Start-Sleep -Seconds 7; $r2 = Invoke-WebRequest -Uri \"http://localhost:5173/form/preview\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r2.StatusCode\\) — OK\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/admin\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\) — OK\" } catch { Write-Output \"Restarting...\"; Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"npx vite --port 5173\" -WorkingDirectory \"C:\\\\Users\\\\loyal\\\\tusk\" -WindowStyle Hidden; Start-Sleep -Seconds 7; $r2 = Invoke-WebRequest -Uri \"http://localhost:5173/admin\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r2.StatusCode\\) — OK\" })",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
