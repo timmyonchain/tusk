@@ -7,15 +7,9 @@ import {
   Star, Upload, Link as LinkIcon, Share2, Copy,
   CheckCircle, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const generateBlobId = () => {
-  const hex = Array.from({ length: 64 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('')
-  return `0x${hex}`
-}
+// ─── Shared input style ───────────────────────────────────────────────────────
 
 const INPUT = {
   width: '100%',
@@ -46,10 +40,7 @@ function QRCodeCanvas({ url }) {
   }, [url])
 
   return (
-    <canvas
-      ref={ref}
-      style={{ borderRadius: '8px', border: '1px solid #1e2130' }}
-    />
+    <canvas ref={ref} style={{ borderRadius: '8px', border: '1px solid #1e2130' }} />
   )
 }
 
@@ -325,7 +316,6 @@ function ShareBar({ url }) {
 
       {open && (
         <div style={{ borderTop: '1px solid #1e2130', padding: '16px' }}>
-          {/* URL + copy button */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <input
               readOnly
@@ -353,8 +343,6 @@ function ShareBar({ url }) {
               {copied ? 'Copied!' : 'Copy Link'}
             </button>
           </div>
-
-          {/* QR Code */}
           <QRCodeCanvas url={url} />
         </div>
       )}
@@ -362,13 +350,13 @@ function ShareBar({ url }) {
   )
 }
 
-// ─── Blob Receipt ─────────────────────────────────────────────────────────────
+// ─── Submission Receipt ───────────────────────────────────────────────────────
 
-function BlobReceipt({ blobId, timestamp }) {
+function BlobReceipt({ receiptId, timestamp }) {
   const [copied, setCopied] = useState(false)
 
-  const copyBlobId = () => {
-    navigator.clipboard.writeText(blobId).catch(() => {})
+  const copyReceiptId = () => {
+    navigator.clipboard.writeText(receiptId).catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -417,11 +405,11 @@ function BlobReceipt({ blobId, timestamp }) {
             background: 'rgba(0,212,255,0.06)', padding: '6px 10px', borderRadius: '6px',
             display: 'block',
           }}>
-            {blobId}
+            {receiptId}
           </code>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
-              onClick={copyBlobId}
+              onClick={copyReceiptId}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#00d4ff')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
               style={{
@@ -448,10 +436,7 @@ function BlobReceipt({ blobId, timestamp }) {
       </div>
 
       {/* Timestamp */}
-      <div style={{
-        borderTop: '1px solid #1e2130',
-        paddingTop: '16px', marginBottom: '16px',
-      }}>
+      <div style={{ borderTop: '1px solid #1e2130', paddingTop: '16px' }}>
         <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
           Received at
         </p>
@@ -459,7 +444,6 @@ function BlobReceipt({ blobId, timestamp }) {
           {new Date(timestamp).toLocaleString()}
         </p>
       </div>
-
     </div>
   )
 }
@@ -469,7 +453,6 @@ function BlobReceipt({ blobId, timestamp }) {
 function SuccessScreen({ submission, onReset, navigate }) {
   return (
     <div style={{ textAlign: 'center', paddingTop: '8px' }}>
-      {/* Animated checkmark circle */}
       <div style={{
         display: 'inline-block',
         animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
@@ -504,9 +487,8 @@ function SuccessScreen({ submission, onReset, navigate }) {
         Your response has been received and securely stored.
       </p>
 
-      <BlobReceipt blobId={submission.blobId} timestamp={submission.submittedAt} />
+      <BlobReceipt receiptId={submission.receipt_id} timestamp={submission.submitted_at} />
 
-      {/* Actions */}
       <div style={{
         display: 'flex', gap: '12px', marginTop: '28px',
         justifyContent: 'center', flexWrap: 'wrap',
@@ -546,10 +528,11 @@ function SuccessScreen({ submission, onReset, navigate }) {
 // ─── Form View Page ───────────────────────────────────────────────────────────
 
 export default function FormView() {
-  const { id }    = useParams()
-  const navigate  = useNavigate()
+  const { id }   = useParams()
+  const navigate = useNavigate()
 
   const [form, setForm]             = useState(null)
+  const [loading, setLoading]       = useState(true)
   const [notFound, setNotFound]     = useState(false)
   const [answers, setAnswers]       = useState({})
   const [errors, setErrors]         = useState({})
@@ -557,23 +540,25 @@ export default function FormView() {
   const [submission, setSubmission] = useState(null)
 
   useEffect(() => {
-    if (!id) { setNotFound(true); return }
+    if (!id) { setNotFound(true); setLoading(false); return }
 
-    let found = null
     if (id === 'preview') {
-      found = JSON.parse(localStorage.getItem('tusk_preview') || 'null')
-      if (found) found.id = 'preview'
-    } else {
-      const forms = JSON.parse(localStorage.getItem('tusk_forms') || '[]')
-      found = forms.find((f) => f.id === id) ?? null
+      const found = JSON.parse(localStorage.getItem('tusk_preview') || 'null')
+      if (found) { setForm({ ...found, id: 'preview' }) }
+      else { setNotFound(true) }
+      setLoading(false)
+      return
     }
 
-    if (found) setForm(found)
-    else setNotFound(true)
+    supabase.from('forms').select('*').eq('id', id).single().then(({ data, error }) => {
+      if (error || !data) setNotFound(true)
+      else setForm(data)
+      setLoading(false)
+    })
   }, [id])
 
-  const setAnswer    = (fieldId, val) => setAnswers((prev) => ({ ...prev, [fieldId]: val }))
-  const clearError   = (fieldId) => setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n })
+  const setAnswer  = (fieldId, val) => setAnswers((prev) => ({ ...prev, [fieldId]: val }))
+  const clearError = (fieldId) => setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n })
 
   const validate = () => {
     const errs = {}
@@ -605,32 +590,41 @@ export default function FormView() {
     }
 
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 2000))
-
-    const blobId = generateBlobId()
-    const now    = new Date().toISOString()
 
     const serialized = {}
     Object.entries(answers).forEach(([k, v]) => {
       serialized[k] = v instanceof File ? v.name : v
     })
 
-    const sub = {
-      id: `sub_${Date.now()}`,
-      formId: form.id,
-      formTitle: form.title,
-      answers: serialized,
-      submittedAt: now,
-      blobId,
-      status: 'Open',
+    const receiptId   = crypto.randomUUID()
+    const submittedAt = new Date().toISOString()
+
+    if (id === 'preview') {
+      setSubmission({ receipt_id: receiptId, submitted_at: submittedAt })
+      setSubmitting(false)
+      return
     }
 
-    const key  = `tusk_submissions_${form.id}`
-    const prev = JSON.parse(localStorage.getItem(key) || '[]')
-    localStorage.setItem(key, JSON.stringify([...prev, sub]))
+    const { data, error } = await supabase
+      .from('submissions')
+      .insert({
+        form_id:      form.id,
+        answers:      serialized,
+        receipt_id:   receiptId,
+        status:       'Open',
+        submitted_at: submittedAt,
+      })
+      .select()
+      .single()
 
-    setSubmission(sub)
     setSubmitting(false)
+
+    if (error) {
+      toast.error('Failed to submit — please try again')
+      return
+    }
+
+    setSubmission(data)
   }
 
   const reset = () => {
@@ -641,6 +635,25 @@ export default function FormView() {
   }
 
   const shareUrl = `${window.location.origin}/form/${id}`
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{
+          width: 32, height: 32,
+          border: '3px solid #1e2130',
+          borderTopColor: '#00d4ff',
+          borderRadius: '50%',
+          display: 'inline-block',
+          animation: 'spin 0.65s linear infinite',
+        }} />
+      </div>
+    )
+  }
 
   // ── Not found ──────────────────────────────────────────────────────────────
   if (notFound) {
@@ -678,8 +691,6 @@ export default function FormView() {
       </div>
     )
   }
-
-  if (!form) return null
 
   // ── Form ───────────────────────────────────────────────────────────────────
   return (

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import {
   Type, AlignLeft, ChevronDown, CheckSquare, Star, Upload, Link, Hash,
   FileText, GripVertical, Trash2, X, Plus, Eye,
@@ -580,10 +582,13 @@ function RightPanel({ field, onUpdate }) {
 // ─── Builder page ─────────────────────────────────────────────────────────────
 
 export default function Builder() {
+  const { user } = useAuth()
+
   const [formTitle, setFormTitle]           = useState('')
   const [fields, setFields]                 = useState([])
   const [selectedFieldId, setSelectedFieldId] = useState(null)
   const [draggedId, setDraggedId]           = useState(null)
+  const [publishing, setPublishing]         = useState(false)
 
   const selectedField = fields.find((f) => f.id === selectedFieldId) ?? null
 
@@ -611,12 +616,17 @@ export default function Builder() {
     if (selectedFieldId === id) setSelectedFieldId(null)
   }
 
-  const publish = () => {
-    const id   = `form_${Date.now()}`
-    const form = { id, title: formTitle || 'Untitled Form', fields, createdAt: new Date().toISOString() }
-    const existing = JSON.parse(localStorage.getItem('tusk_forms') || '[]')
-    localStorage.setItem('tusk_forms', JSON.stringify([...existing, form]))
-    const url = `http://localhost:5173/form/${id}`
+  const publish = async () => {
+    if (!user) { toast.error('Please sign in to publish'); return }
+    setPublishing(true)
+    const { data, error } = await supabase
+      .from('forms')
+      .insert({ user_id: user.id, title: formTitle || 'Untitled Form', fields })
+      .select()
+      .single()
+    setPublishing(false)
+    if (error) { toast.error('Failed to publish form'); return }
+    const url = `${window.location.origin}/form/${data.id}`
     navigator.clipboard.writeText(url).catch(() => {})
     toast.success('🎉 Form published! Link copied to clipboard')
   }
@@ -675,17 +685,33 @@ export default function Builder() {
 
           <button
             onClick={publish}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
+            disabled={publishing}
+            onMouseEnter={(e) => !publishing && (e.currentTarget.style.opacity = '0.88')}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
             style={{
               background: '#00d4ff', border: 'none',
               color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
               fontSize: '13px', fontWeight: 700,
               borderRadius: '8px', padding: '7px 18px',
-              cursor: 'pointer', flexShrink: 0, transition: 'opacity 0.15s',
+              cursor: publishing ? 'default' : 'pointer',
+              opacity: publishing ? 0.8 : 1,
+              flexShrink: 0, transition: 'opacity 0.15s',
+              display: 'flex', alignItems: 'center', gap: '6px',
             }}
           >
-            Publish →
+            {publishing ? (
+              <>
+                <span style={{
+                  width: 12, height: 12,
+                  border: '2px solid rgba(10,10,15,0.3)',
+                  borderTopColor: '#0a0a0f',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 0.65s linear infinite',
+                }} />
+                Publishing…
+              </>
+            ) : 'Publish →'}
           </button>
         </div>
 

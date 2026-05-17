@@ -5,6 +5,8 @@ import {
   Search, Download, ChevronDown, ChevronRight, Copy,
   Plus, FileText, BarChart2,
 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -48,29 +50,15 @@ const fmtAnswer = (val, field) => {
   return String(val)
 }
 
-const loadForms = () => {
-  const raw = JSON.parse(localStorage.getItem('tusk_forms') || '[]')
-  return raw.map(f => ({
-    ...f,
-    submissionCount: JSON.parse(localStorage.getItem(`tusk_submissions_${f.id}`) || '[]').length,
-  }))
-}
-
-const loadSubs = (formId) =>
-  JSON.parse(localStorage.getItem(`tusk_submissions_${formId}`) || '[]')
-
-const saveSubs = (formId, subs) =>
-  localStorage.setItem(`tusk_submissions_${formId}`, JSON.stringify(subs))
-
 const exportCSV = (form, subs) => {
   const fieldLabels = (form.fields || []).map(f => f.label)
   const headers     = ['#', 'Date', 'Wallet', 'Receipt ID', 'Status', ...fieldLabels]
 
   const rows = subs.map((sub, i) => [
     i + 1,
-    fmtDateFull(sub.submittedAt),
+    fmtDateFull(sub.submitted_at),
     fmtWallet(findWallet(form, sub)),
-    sub.blobId || '',
+    sub.receipt_id || '',
     sub.status || 'Open',
     ...(form.fields || []).map(f => {
       const v = sub.answers?.[f.id]
@@ -91,6 +79,23 @@ const exportCSV = (form, subs) => {
   a.click()
   URL.revokeObjectURL(url)
   toast.success('CSV exported successfully')
+}
+
+// ─── Spinner ──────────────────────────────────────────────────────────────────
+
+function Spinner() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px' }}>
+      <span style={{
+        width: 28, height: 28,
+        border: '3px solid #1e2130',
+        borderTopColor: '#00d4ff',
+        borderRadius: '50%',
+        display: 'inline-block',
+        animation: 'spin 0.65s linear infinite',
+      }} />
+    </div>
+  )
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -122,8 +127,8 @@ function StatusBadge({ status, onClick }) {
 // ─── Expanded Detail ──────────────────────────────────────────────────────────
 
 function ExpandedDetail({ sub, form, onCollapse }) {
-  const copyBlob = () => {
-    navigator.clipboard.writeText(sub.blobId || '').catch(() => {})
+  const copyReceiptId = () => {
+    navigator.clipboard.writeText(sub.receipt_id || '').catch(() => {})
     toast.success('Receipt ID copied')
   }
 
@@ -152,8 +157,7 @@ function ExpandedDetail({ sub, form, onCollapse }) {
             </p>
             <p style={{
               fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-              color: '#e2e8f0', lineHeight: 1.5,
-              wordBreak: 'break-word',
+              color: '#e2e8f0', lineHeight: 1.5, wordBreak: 'break-word',
             }}>
               {fmtAnswer(sub.answers?.[field.id], field)}
             </p>
@@ -161,7 +165,7 @@ function ExpandedDetail({ sub, form, onCollapse }) {
         ))}
       </div>
 
-      {/* Blob + links */}
+      {/* Receipt ID + collapse */}
       <div style={{
         borderTop: '1px solid #1e2130', paddingTop: '16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -177,10 +181,10 @@ function ExpandedDetail({ sub, form, onCollapse }) {
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: '340px', display: 'block',
           }}>
-            {sub.blobId || 'N/A'}
+            {sub.receipt_id || 'N/A'}
           </code>
           <button
-            onClick={copyBlob}
+            onClick={copyReceiptId}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#00d4ff')}
             onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
             style={{
@@ -214,16 +218,16 @@ function ExpandedDetail({ sub, form, onCollapse }) {
 // ─── Submission Row ───────────────────────────────────────────────────────────
 
 function SubmissionRow({ sub, index, form, expanded, onToggle, onStatusChange }) {
-  const [hovered, setHovered]     = useState(false)
-  const [blobCopied, setBlobCopied] = useState(false)
+  const [hovered, setHovered]         = useState(false)
+  const [receiptCopied, setReceiptCopied] = useState(false)
 
   const wallet = fmtWallet(findWallet(form, sub))
 
-  const copyBlob = (e) => {
+  const copyReceiptId = (e) => {
     e.stopPropagation()
-    navigator.clipboard.writeText(sub.blobId || '').catch(() => {})
-    setBlobCopied(true)
-    setTimeout(() => setBlobCopied(false), 1500)
+    navigator.clipboard.writeText(sub.receipt_id || '').catch(() => {})
+    setReceiptCopied(true)
+    setTimeout(() => setReceiptCopied(false), 1500)
   }
 
   const nextStatus = (e) => {
@@ -241,7 +245,6 @@ function SubmissionRow({ sub, index, form, expanded, onToggle, onStatusChange })
 
   return (
     <div>
-      {/* Main row */}
       <div
         onClick={onToggle}
         onMouseEnter={() => setHovered(true)}
@@ -260,7 +263,7 @@ function SubmissionRow({ sub, index, form, expanded, onToggle, onStatusChange })
 
         {/* Submitted */}
         <div style={{ ...cellBase, color: '#94a3b8', fontFamily: 'DM Sans, sans-serif', fontSize: '13px' }}>
-          {fmtDate(sub.submittedAt)}
+          {fmtDate(sub.submitted_at)}
         </div>
 
         {/* Wallet */}
@@ -274,20 +277,20 @@ function SubmissionRow({ sub, index, form, expanded, onToggle, onStatusChange })
           </span>
         </div>
 
-        {/* Blob ID */}
+        {/* Receipt ID */}
         <div style={{ ...cellBase, gap: '6px' }}>
           <code
-            onClick={copyBlob}
-            title={blobCopied ? 'Copied!' : 'Click to copy'}
+            onClick={copyReceiptId}
+            title={receiptCopied ? 'Copied!' : 'Click to copy'}
             style={{
               fontFamily: 'monospace', fontSize: '12px',
               color: '#00d4ff',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               cursor: 'copy', maxWidth: '140px', display: 'block',
-              opacity: blobCopied ? 0.6 : 1, transition: 'opacity 0.15s',
+              opacity: receiptCopied ? 0.6 : 1, transition: 'opacity 0.15s',
             }}
           >
-            {sub.blobId ? `${sub.blobId.slice(0, 10)}…` : 'N/A'}
+            {sub.receipt_id ? `${sub.receipt_id.slice(0, 8)}…` : 'N/A'}
           </code>
         </div>
 
@@ -305,7 +308,6 @@ function SubmissionRow({ sub, index, form, expanded, onToggle, onStatusChange })
         </div>
       </div>
 
-      {/* Expandable detail */}
       {expanded && (
         <ExpandedDetail sub={sub} form={form} onCollapse={onToggle} />
       )}
@@ -317,21 +319,9 @@ function SubmissionRow({ sub, index, form, expanded, onToggle, onStatusChange })
 
 function StatsRow({ submissions }) {
   const stats = [
-    {
-      label: 'Total Responses',
-      value: submissions.length,
-      color: '#f8fafc',
-    },
-    {
-      label: 'Open',
-      value: submissions.filter(s => (s.status || 'Open') === 'Open').length,
-      color: '#00d4ff',
-    },
-    {
-      label: 'Resolved',
-      value: submissions.filter(s => s.status === 'Resolved').length,
-      color: '#10b981',
-    },
+    { label: 'Total Responses', value: submissions.length, color: '#f8fafc' },
+    { label: 'Open',            value: submissions.filter(s => (s.status || 'Open') === 'Open').length, color: '#00d4ff' },
+    { label: 'Resolved',        value: submissions.filter(s => s.status === 'Resolved').length, color: '#10b981' },
   ]
 
   return (
@@ -343,11 +333,8 @@ function StatsRow({ submissions }) {
     }}>
       {stats.map(({ label, value, color }) => (
         <div key={label} style={{
-          background: '#0f1117',
-          border: '1px solid #1e2130',
-          borderRadius: '8px',
-          padding: '14px 20px',
-          minWidth: '120px',
+          background: '#0f1117', border: '1px solid #1e2130',
+          borderRadius: '8px', padding: '14px 20px', minWidth: '120px',
         }}>
           <p style={{
             fontFamily: 'Syne, sans-serif', fontWeight: 700,
@@ -355,10 +342,7 @@ function StatsRow({ submissions }) {
           }}>
             {value}
           </p>
-          <p style={{
-            fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
-            color: '#64748b',
-          }}>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b' }}>
             {label}
           </p>
         </div>
@@ -372,8 +356,7 @@ function StatsRow({ submissions }) {
 function TopBar({ form, search, onSearch, statusFilter, onStatusFilter, onExport }) {
   return (
     <div style={{
-      padding: '16px 24px',
-      borderBottom: '1px solid #1e2130',
+      padding: '16px 24px', borderBottom: '1px solid #1e2130',
       display: 'flex', alignItems: 'center',
       gap: '12px', flexShrink: 0, flexWrap: 'wrap',
     }}>
@@ -467,16 +450,10 @@ function EmptySubmissions({ form }) {
         <FileText size={22} color="#475569" />
       </div>
       <div>
-        <p style={{
-          fontFamily: 'Syne, sans-serif', fontSize: '16px',
-          color: '#94a3b8', marginBottom: '6px',
-        }}>
+        <p style={{ fontFamily: 'Syne, sans-serif', fontSize: '16px', color: '#94a3b8', marginBottom: '6px' }}>
           No submissions yet
         </p>
-        <p style={{
-          fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
-          color: '#475569', lineHeight: 1.5,
-        }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
           Share the form link to start collecting responses
         </p>
       </div>
@@ -500,13 +477,15 @@ function EmptySubmissions({ form }) {
 
 // ─── Submissions Table ────────────────────────────────────────────────────────
 
-function SubmissionsTable({ form, submissions, search, statusFilter, onStatusUpdate }) {
+function SubmissionsTable({ form, submissions, search, statusFilter, onStatusUpdate, loading }) {
   const [expandedId, setExpandedId] = useState(null)
+
+  if (loading) return <Spinner />
 
   const filtered = submissions.filter(sub => {
     const matchSearch = !search || Object.values(sub.answers || {}).some(v =>
       String(v).toLowerCase().includes(search.toLowerCase())
-    ) || (sub.blobId || '').toLowerCase().includes(search.toLowerCase())
+    ) || (sub.receipt_id || '').toLowerCase().includes(search.toLowerCase())
 
     const matchStatus = statusFilter === 'All' || (sub.status || 'Open') === statusFilter
 
@@ -602,7 +581,6 @@ function NoFormSelected({ forms, onSelectForm }) {
         </p>
       </div>
 
-      {/* Form cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
         {forms.slice(0, 4).map(form => (
           <div
@@ -640,7 +618,7 @@ function NoFormSelected({ forms, onSelectForm }) {
 
 // ─── Forms Sidebar ────────────────────────────────────────────────────────────
 
-function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate }) {
+function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate, loading }) {
   return (
     <aside style={{
       width: 280, flexShrink: 0,
@@ -649,10 +627,8 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate }) {
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      {/* Sidebar header */}
       <div style={{
-        padding: '14px 16px',
-        borderBottom: '1px solid #1e2130',
+        padding: '14px 16px', borderBottom: '1px solid #1e2130',
         display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', flexShrink: 0,
       }}>
@@ -680,12 +656,11 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate }) {
         </button>
       </div>
 
-      {/* Forms list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {forms.length === 0 ? (
-          <div style={{
-            padding: '40px 16px', textAlign: 'center',
-          }}>
+        {loading ? (
+          <Spinner />
+        ) : forms.length === 0 ? (
+          <div style={{ padding: '40px 16px', textAlign: 'center' }}>
             <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#475569', marginBottom: '12px' }}>
               No forms yet
             </p>
@@ -712,8 +687,7 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate }) {
                   background: selected ? '#0f1117' : 'transparent',
                   borderLeft: `3px solid ${selected ? '#00d4ff' : 'transparent'}`,
                   borderBottom: '1px solid #0f1117',
-                  cursor: 'pointer',
-                  transition: 'background 0.1s',
+                  cursor: 'pointer', transition: 'background 0.1s',
                 }}
                 onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = '#0c0c14' }}
                 onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent' }}
@@ -726,15 +700,12 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate }) {
                 }}>
                   {form.title || 'Untitled Form'}
                 </p>
-                <p style={{
-                  fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b',
-                  marginBottom: '2px',
-                }}>
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', marginBottom: '2px' }}>
                   {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
                 </p>
-                {form.createdAt && (
+                {form.created_at && (
                   <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#334155' }}>
-                    {new Date(form.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(form.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </p>
                 )}
               </div>
@@ -749,33 +720,84 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate }) {
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
 export default function Admin() {
-  const navigate = useNavigate()
+  const navigate    = useNavigate()
+  const { user }    = useAuth()
 
   const [forms, setForms]               = useState([])
+  const [formsLoading, setFormsLoading] = useState(false)
   const [selectedFormId, setSelectedFormId] = useState(null)
   const [submissions, setSubmissions]   = useState([])
+  const [subsLoading, setSubsLoading]   = useState(false)
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
 
-  // Load forms on mount
+  // Load forms + submission counts
   useEffect(() => {
-    setForms(loadForms())
-  }, [])
+    if (!user) return
+
+    async function load() {
+      setFormsLoading(true)
+      try {
+        const { data: formsData, error } = await supabase
+          .from('forms')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          toast.error('Failed to load forms')
+          return
+        }
+
+        const withCounts = await Promise.all(
+          (formsData || []).map(async (form) => {
+            const { count } = await supabase
+              .from('submissions')
+              .select('id', { count: 'exact', head: true })
+              .eq('form_id', form.id)
+            return { ...form, submissionCount: count || 0 }
+          })
+        )
+
+        setForms(withCounts)
+      } catch {
+        toast.error('Failed to load forms')
+      } finally {
+        setFormsLoading(false)
+      }
+    }
+
+    load()
+  }, [user])
 
   // Load submissions when form changes
   useEffect(() => {
     if (!selectedFormId) { setSubmissions([]); return }
-    setSubmissions(loadSubs(selectedFormId))
+    setSubsLoading(true)
     setSearch('')
     setStatusFilter('All')
+
+    supabase
+      .from('submissions')
+      .select('*')
+      .eq('form_id', selectedFormId)
+      .order('submitted_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) toast.error('Failed to load submissions')
+        else setSubmissions(data || [])
+        setSubsLoading(false)
+      })
   }, [selectedFormId])
 
   const selectedForm = forms.find(f => f.id === selectedFormId) ?? null
 
-  const updateStatus = (subId, newStatus) => {
-    const updated = submissions.map(s => s.id === subId ? { ...s, status: newStatus } : s)
-    setSubmissions(updated)
-    saveSubs(selectedFormId, updated)
+  const updateStatus = async (subId, newStatus) => {
+    setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, status: newStatus } : s))
+    const { error } = await supabase
+      .from('submissions')
+      .update({ status: newStatus })
+      .eq('id', subId)
+    if (error) toast.error('Failed to update status')
   }
 
   const handleExport = () => {
@@ -791,6 +813,7 @@ export default function Admin() {
         selectedFormId={selectedFormId}
         onSelectForm={setSelectedFormId}
         navigate={navigate}
+        loading={formsLoading}
       />
 
       {/* Right main area */}
@@ -818,6 +841,7 @@ export default function Admin() {
                 search={search}
                 statusFilter={statusFilter}
                 onStatusUpdate={updateStatus}
+                loading={subsLoading}
               />
             </div>
           </>

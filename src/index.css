@@ -62,3 +62,13 @@ body::after {
   from { stroke-dashoffset: 100; }
   to   { stroke-dashoffset: 0; }
 }
+
+/* Hide scrollbars everywhere while keeping scroll functionality */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

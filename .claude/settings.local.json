@@ -11,7 +11,11 @@
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5173/admin\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\) — OK\" } catch { Write-Output \"Restarting...\"; Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"npx vite --port 5173\" -WorkingDirectory \"C:\\\\Users\\\\loyal\\\\tusk\" -WindowStyle Hidden; Start-Sleep -Seconds 7; $r2 = Invoke-WebRequest -Uri \"http://localhost:5173/admin\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r2.StatusCode\\) — OK\" })",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npm install *)",
+      "Bash(Start-Process *)",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\",\"cd /d C:\\\\Users\\\\loyal\\\\tusk && npx vite --port 5173\" -WindowStyle Hidden)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)"
     ]
   }
 }
