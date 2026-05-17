@@ -453,6 +453,58 @@ function BlobReceipt({ receiptId, timestamp }) {
   )
 }
 
+// ─── Closed / Limit Screens ───────────────────────────────────────────────────
+
+function ClosedScreen() {
+  return (
+    <div style={{
+      minHeight: 'calc(100vh - 64px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', gap: '16px', textAlign: 'center',
+      padding: '40px 24px',
+    }}>
+      <div style={{ fontSize: '52px', lineHeight: 1 }}>😔</div>
+      <h2 style={{
+        fontFamily: 'Syne, sans-serif', fontWeight: 700,
+        fontSize: '1.6rem', color: '#f8fafc', marginBottom: 0,
+      }}>
+        Submissions Closed
+      </h2>
+      <p style={{
+        fontFamily: 'DM Sans, sans-serif', fontSize: '15px',
+        color: '#64748b', lineHeight: 1.6, maxWidth: '360px', margin: 0,
+      }}>
+        This form is no longer accepting responses.
+      </p>
+    </div>
+  )
+}
+
+function LimitReachedScreen() {
+  return (
+    <div style={{
+      minHeight: 'calc(100vh - 64px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', gap: '16px', textAlign: 'center',
+      padding: '40px 24px',
+    }}>
+      <div style={{ fontSize: '52px', lineHeight: 1 }}>😔</div>
+      <h2 style={{
+        fontFamily: 'Syne, sans-serif', fontWeight: 700,
+        fontSize: '1.6rem', color: '#f8fafc', marginBottom: 0,
+      }}>
+        Submission Limit Reached
+      </h2>
+      <p style={{
+        fontFamily: 'DM Sans, sans-serif', fontSize: '15px',
+        color: '#64748b', lineHeight: 1.6, maxWidth: '360px', margin: 0,
+      }}>
+        This form has reached its maximum number of submissions.
+      </p>
+    </div>
+  )
+}
+
 // ─── Success Screen ───────────────────────────────────────────────────────────
 
 function SuccessScreen({ receiptId, onReset, navigate }) {
@@ -536,15 +588,17 @@ export default function FormView() {
   const { id }   = useParams()
   const navigate = useNavigate()
 
-  const isMobile                    = useIsMobile()
-  const [form, setForm]             = useState(null)
-  const [loading, setLoading]       = useState(true)
-  const [notFound, setNotFound]     = useState(false)
-  const [answers, setAnswers]       = useState({})
-  const [errors, setErrors]         = useState([])
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted]   = useState(false)
-  const [receiptId, setReceiptId]   = useState('')
+  const isMobile                        = useIsMobile()
+  const [form, setForm]                 = useState(null)
+  const [loading, setLoading]           = useState(true)
+  const [notFound, setNotFound]         = useState(false)
+  const [formClosed, setFormClosed]     = useState(false)
+  const [limitReached, setLimitReached] = useState(false)
+  const [answers, setAnswers]           = useState({})
+  const [errors, setErrors]             = useState([])
+  const [submitting, setSubmitting]     = useState(false)
+  const [submitted, setSubmitted]       = useState(false)
+  const [receiptId, setReceiptId]       = useState('')
 
   useEffect(() => {
     if (!id) { setNotFound(true); setLoading(false); return }
@@ -557,11 +611,25 @@ export default function FormView() {
       return
     }
 
-    supabase.from('forms').select('*').eq('id', id).single().then(({ data, error }) => {
-      if (error || !data) setNotFound(true)
-      else setForm(data)
+    async function fetchForm() {
+      const { data, error } = await supabase.from('forms').select('*').eq('id', id).single()
+      if (error || !data) { setNotFound(true); setLoading(false); return }
+
+      if (data.is_active === false) { setForm(data); setFormClosed(true); setLoading(false); return }
+
+      if (data.max_submissions != null) {
+        const { count } = await supabase
+          .from('submissions')
+          .select('id', { count: 'exact', head: true })
+          .eq('form_id', id)
+        if (count >= data.max_submissions) { setForm(data); setLimitReached(true); setLoading(false); return }
+      }
+
+      setForm(data)
       setLoading(false)
-    })
+    }
+
+    fetchForm()
   }, [id])
 
   const setAnswer  = (fieldId, val) => setAnswers((prev) => ({ ...prev, [fieldId]: val }))
@@ -645,6 +713,9 @@ export default function FormView() {
       </div>
     )
   }
+
+  if (formClosed) return <ClosedScreen />
+  if (limitReached) return <LimitReachedScreen />
 
   // ── Not found ──────────────────────────────────────────────────────────────
   if (notFound) {

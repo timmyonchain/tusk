@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
   Search, Download, ChevronDown, ChevronRight, Copy,
-  Plus, FileText, BarChart2,
+  Plus, FileText, BarChart2, XCircle, CheckCircle,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -696,14 +696,25 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate, loading }
                 onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = '#0c0c14' }}
                 onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent' }}
               >
-                <p style={{
-                  fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-                  color: selected ? '#f8fafc' : '#e2e8f0',
-                  marginBottom: '4px',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {form.title || 'Untitled Form'}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <span style={{
+                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                    background: form.is_active !== false ? '#10b981' : '#ef4444',
+                  }} />
+                  <p style={{
+                    fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+                    color: selected ? '#f8fafc' : '#e2e8f0',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    flex: 1, minWidth: 0, margin: 0,
+                  }}>
+                    {form.title || 'Untitled Form'}
+                  </p>
+                </div>
+                {form.is_active === false && (
+                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#ef4444', marginBottom: '2px' }}>
+                    Revoked
+                  </p>
+                )}
                 <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', marginBottom: '2px' }}>
                   {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
                 </p>
@@ -762,6 +773,157 @@ function MobileSubmissionCard({ sub, index, form, expanded, onToggle, onStatusCh
     </div>
   )
 }
+
+// ─── Form Settings ────────────────────────────────────────────────────────────
+
+function FormSettings({ form, onUpdateForm }) {
+  const [confirming, setConfirming] = useState(false)
+  const [maxInput, setMaxInput]     = useState(
+    form.max_submissions != null ? String(form.max_submissions) : ''
+  )
+  const [saving, setSaving] = useState(false)
+
+  const isActive = form.is_active !== false
+
+  const toggleActive = async () => {
+    if (!confirming) { setConfirming(true); return }
+    setConfirming(false)
+    const newActive = !isActive
+    onUpdateForm(form.id, { is_active: newActive })
+    const { error } = await supabase.from('forms').update({ is_active: newActive }).eq('id', form.id)
+    if (error) {
+      toast.error('Failed to update form')
+      onUpdateForm(form.id, { is_active: isActive })
+    } else {
+      toast.success(newActive ? 'Form link reactivated' : 'Form link revoked')
+    }
+  }
+
+  const saveLimit = async () => {
+    const trimmed = maxInput.trim()
+    const val = trimmed === '' ? null : parseInt(trimmed, 10)
+    if (trimmed !== '' && (isNaN(val) || val < 1)) {
+      toast.error('Enter a valid number or leave empty for no limit')
+      return
+    }
+    setSaving(true)
+    onUpdateForm(form.id, { max_submissions: val })
+    const { error } = await supabase.from('forms').update({ max_submissions: val }).eq('id', form.id)
+    if (error) {
+      toast.error('Failed to save limit')
+    } else {
+      toast.success(val != null ? `Limit set to ${val} submissions` : 'Submission limit removed')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div style={{
+      padding: '10px 24px',
+      borderBottom: '1px solid #1e2130',
+      background: '#080810',
+      display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
+      flexShrink: 0,
+    }}>
+      {/* Revoke / Activate */}
+      {!confirming ? (
+        <button
+          onClick={toggleActive}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = isActive ? '#ef4444' : '#10b981'
+            e.currentTarget.style.color = isActive ? '#ef4444' : '#10b981'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = isActive ? '#334155' : '#1e2130'
+            e.currentTarget.style.color = isActive ? '#94a3b8' : '#10b981'
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'transparent',
+            border: `1px solid ${isActive ? '#334155' : '#1e2130'}`,
+            borderRadius: '6px', padding: '5px 12px',
+            color: isActive ? '#94a3b8' : '#10b981',
+            fontFamily: 'DM Sans, sans-serif', fontSize: '12px', fontWeight: 500,
+            cursor: 'pointer', transition: 'border-color 0.15s, color 0.15s',
+          }}
+        >
+          {isActive ? <XCircle size={13} /> : <CheckCircle size={13} />}
+          {isActive ? 'Revoke Link' : 'Reactivate Link'}
+        </button>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#94a3b8' }}>
+            {isActive ? 'Revoke this form link?' : 'Reactivate this form?'}
+          </span>
+          <button
+            onClick={toggleActive}
+            style={{
+              background: isActive ? '#ef4444' : '#10b981',
+              border: 'none', borderRadius: '6px', padding: '5px 12px',
+              color: '#fff', fontFamily: 'DM Sans, sans-serif',
+              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Confirm
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            style={{
+              background: 'transparent', border: '1px solid #1e2130',
+              borderRadius: '6px', padding: '5px 10px',
+              color: '#64748b', fontFamily: 'DM Sans, sans-serif',
+              fontSize: '12px', cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      <div style={{ width: 1, height: 24, background: '#1e2130', flexShrink: 0 }} />
+
+      {/* Submission limit */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+          Submission limit
+        </span>
+        <input
+          type="number"
+          min="1"
+          value={maxInput}
+          onChange={(e) => setMaxInput(e.target.value)}
+          placeholder="No limit"
+          onFocus={(e) => (e.currentTarget.style.borderColor = '#00d4ff')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+          style={{
+            width: '80px', background: '#0f1117',
+            border: '1px solid #1e2130', borderRadius: '6px',
+            padding: '5px 10px', color: '#f8fafc',
+            fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+            outline: 'none', transition: 'border-color 0.15s',
+          }}
+        />
+        <button
+          onClick={saveLimit}
+          disabled={saving}
+          onMouseEnter={(e) => !saving && (e.currentTarget.style.borderColor = '#00d4ff')}
+          onMouseLeave={(e) => !saving && (e.currentTarget.style.borderColor = '#1e2130')}
+          style={{
+            background: 'transparent', border: '1px solid #1e2130',
+            borderRadius: '6px', padding: '5px 12px',
+            color: '#00d4ff', fontFamily: 'DM Sans, sans-serif',
+            fontSize: '12px', fontWeight: 500, cursor: saving ? 'default' : 'pointer',
+            opacity: saving ? 0.6 : 1, transition: 'border-color 0.15s',
+          }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Mobile Submissions View ──────────────────────────────────────────────────
 
 function MobileSubmissionsView({ form, submissions, search, statusFilter, onStatusUpdate, loading }) {
   const [expandedId, setExpandedId] = useState(null)
@@ -886,6 +1048,10 @@ export default function Admin() {
     if (error) toast.error('Failed to update status')
   }
 
+  const updateForm = (formId, updates) => {
+    setForms(prev => prev.map(f => f.id === formId ? { ...f, ...updates } : f))
+  }
+
   const handleExport = () => {
     if (selectedForm && submissions.length > 0) exportCSV(selectedForm, submissions)
     else toast.error('No submissions to export')
@@ -943,17 +1109,24 @@ export default function Admin() {
                       transition: 'background 0.1s',
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{
-                        fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
-                        color: selected ? '#f8fafc' : '#e2e8f0',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        marginBottom: 2,
-                      }}>
-                        {form.title || 'Untitled Form'}
-                      </p>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: 2 }}>
+                        <span style={{
+                          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                          background: form.is_active !== false ? '#10b981' : '#ef4444',
+                        }} />
+                        <p style={{
+                          fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+                          color: selected ? '#f8fafc' : '#e2e8f0',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          flex: 1, minWidth: 0, margin: 0,
+                        }}>
+                          {form.title || 'Untitled Form'}
+                        </p>
+                      </div>
                       <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b' }}>
                         {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
+                        {form.is_active === false ? ' · Revoked' : ''}
                       </p>
                     </div>
                     <ChevronRight size={13} color={selected ? '#00d4ff' : '#334155'} style={{ flexShrink: 0 }} />
@@ -1033,6 +1206,7 @@ export default function Admin() {
                 </div>
               </div>
 
+              <FormSettings key={selectedForm.id} form={selectedForm} onUpdateForm={updateForm} />
               <StatsRow submissions={submissions} mobile />
 
               <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1081,6 +1255,7 @@ export default function Admin() {
               onStatusFilter={setStatusFilter}
               onExport={handleExport}
             />
+            <FormSettings key={selectedForm.id} form={selectedForm} onUpdateForm={updateForm} />
             <StatsRow submissions={submissions} />
             <div style={{ flex: 1, overflowY: 'auto' }}>
               <SubmissionsTable
