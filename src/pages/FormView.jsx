@@ -455,7 +455,7 @@ function BlobReceipt({ receiptId, timestamp }) {
 
 // ─── Success Screen ───────────────────────────────────────────────────────────
 
-function SuccessScreen({ submission, onReset, navigate }) {
+function SuccessScreen({ receiptId, onReset, navigate }) {
   return (
     <div style={{ textAlign: 'center', paddingTop: '8px' }}>
       <div style={{
@@ -492,7 +492,7 @@ function SuccessScreen({ submission, onReset, navigate }) {
         Your response has been received and securely stored.
       </p>
 
-      <BlobReceipt receiptId={submission.receipt_id} timestamp={submission.submitted_at} />
+      <BlobReceipt receiptId={receiptId} timestamp={new Date().toISOString()} />
 
       <div style={{
         display: 'flex', gap: '12px', marginTop: '28px',
@@ -541,9 +541,10 @@ export default function FormView() {
   const [loading, setLoading]       = useState(true)
   const [notFound, setNotFound]     = useState(false)
   const [answers, setAnswers]       = useState({})
-  const [errors, setErrors]         = useState({})
+  const [errors, setErrors]         = useState([])
   const [submitting, setSubmitting] = useState(false)
-  const [submission, setSubmission] = useState(null)
+  const [submitted, setSubmitted]   = useState(false)
+  const [receiptId, setReceiptId]   = useState('')
 
   useEffect(() => {
     if (!id) { setNotFound(true); setLoading(false); return }
@@ -564,79 +565,63 @@ export default function FormView() {
   }, [id])
 
   const setAnswer  = (fieldId, val) => setAnswers((prev) => ({ ...prev, [fieldId]: val }))
-  const clearError = (fieldId) => setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n })
+  const clearError = (fieldId) => setErrors((prev) => prev.filter(id => id !== fieldId))
 
-  const validate = () => {
-    const errs = {}
-    ;(form.fields || []).forEach((field) => {
-      if (!field.required) return
-      const val = answers[field.id]
-      switch (field.type) {
-        case 'short-text': case 'long-text': case 'number': case 'url':
-          if (!val || String(val).trim() === '') errs[field.id] = true; break
-        case 'dropdown':
-          if (!val) errs[field.id] = true; break
-        case 'checkboxes':
-          if (!val || val.length === 0) errs[field.id] = true; break
-        case 'star-rating':
-          if (!val || val === 0) errs[field.id] = true; break
-        case 'file-upload':
-          if (!val) errs[field.id] = true; break
-      }
-    })
-    return errs
-  }
-
-  const submit = async () => {
-    const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs)
+  const handleSubmit = async () => {
+    const missingFields = (form.fields || []).filter(f => f.required && !answers[f.id])
+    if (missingFields.length > 0) {
       toast.error('Please fill in all required fields')
+      setErrors(missingFields.map(f => f.id))
       return
     }
 
     setSubmitting(true)
 
-    const serialized = {}
-    Object.entries(answers).forEach(([k, v]) => {
-      serialized[k] = v instanceof File ? v.name : v
-    })
+    try {
+      const receipt = crypto.randomUUID()
 
-    const receiptId   = crypto.randomUUID()
-    const submittedAt = new Date().toISOString()
+      if (id === 'preview') {
+        setReceiptId(receipt)
+        setSubmitted(true)
+        return
+      }
 
-    if (id === 'preview') {
-      setSubmission({ receipt_id: receiptId, submitted_at: submittedAt })
-      setSubmitting(false)
-      return
-    }
-
-    const { data, error } = await supabase
-      .from('submissions')
-      .insert({
-        form_id:      form.id,
-        answers:      serialized,
-        receipt_id:   receiptId,
-        status:       'Open',
-        submitted_at: submittedAt,
+      const serialized = {}
+      Object.entries(answers).forEach(([k, v]) => {
+        serialized[k] = v instanceof File ? v.name : v
       })
-      .select()
-      .single()
 
-    setSubmitting(false)
+      const { error } = await supabase
+        .from('submissions')
+        .insert({
+          form_id:    form.id,
+          answers:    serialized,
+          receipt_id: receipt,
+          status:     'Open',
+        })
 
-    if (error) {
-      toast.error('Failed to submit — please try again')
-      return
+      if (error) {
+        console.error('Submission error:', error)
+        toast.error('Failed to submit. Please try again.')
+        return
+      }
+
+      setReceiptId(receipt)
+      setSubmitted(true)
+
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      toast.error('Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
-
-    setSubmission(data)
   }
 
   const reset = () => {
     setAnswers({})
-    setErrors({})
-    setSubmission(null)
+    setErrors([])
+    setSubmitted(false)
+    setReceiptId('')
     setSubmitting(false)
   }
 
@@ -727,8 +712,8 @@ export default function FormView() {
         </div>
 
         {/* Success or form */}
-        {submission ? (
-          <SuccessScreen submission={submission} onReset={reset} navigate={navigate} />
+        {submitted ? (
+          <SuccessScreen receiptId={receiptId} onReset={reset} navigate={navigate} />
         ) : (
           <>
             <ShareBar url={shareUrl} />
@@ -751,11 +736,11 @@ export default function FormView() {
                   field={field}
                   value={answers[field.id]}
                   onChange={(val) => setAnswer(field.id, val)}
-                  error={errors[field.id]}
+                  error={errors.includes(field.id)}
                   onClearError={() => clearError(field.id)}
                 />
 
-                {errors[field.id] && (
+                {errors.includes(field.id) && (
                   <p style={{
                     fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
                     color: '#ef4444', marginTop: '6px',
@@ -768,7 +753,7 @@ export default function FormView() {
 
             {/* Submit button */}
             <button
-              onClick={submit}
+              onClick={handleSubmit}
               disabled={submitting}
               onMouseEnter={(e) => !submitting && (e.currentTarget.style.opacity = '0.9')}
               onMouseLeave={(e) => !submitting && (e.currentTarget.style.opacity = '1')}
