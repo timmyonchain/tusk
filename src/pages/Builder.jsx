@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../hooks/useIsMobile'
 import {
   Type, AlignLeft, ChevronDown, CheckSquare, Star, Upload, Link, Hash,
-  FileText, GripVertical, Trash2, X, Plus, Eye,
+  FileText, GripVertical, Trash2, X, Plus, Eye, EyeOff, Globe, Lock,
 } from 'lucide-react'
 
 // ─── Field type registry ──────────────────────────────────────────────────────
@@ -631,6 +631,213 @@ function RightPanel({ field, onUpdate, mobile = false, onBack }) {
   )
 }
 
+// ─── Publish Modal ────────────────────────────────────────────────────────────
+
+function PublishModal({ formTitle, fields, user, onClose, onPublished }) {
+  const [isPrivate, setIsPrivate]     = useState(false)
+  const [password, setPassword]       = useState('')
+  const [confirm, setConfirm]         = useState('')
+  const [showPw, setShowPw]           = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [publishing, setPublishing]   = useState(false)
+
+  const handlePublish = async () => {
+    if (isPrivate) {
+      if (!password) { toast.error('Enter a password for the private form'); return }
+      if (password !== confirm) { toast.error('Passwords do not match'); return }
+    }
+    setPublishing(true)
+    const { data, error } = await supabase
+      .from('forms')
+      .insert({
+        user_id:       user.id,
+        title:         formTitle || 'Untitled Form',
+        fields,
+        is_private:    isPrivate,
+        form_password: isPrivate ? password : null,
+      })
+      .select()
+      .single()
+    setPublishing(false)
+    if (error) { toast.error('Failed to publish form'); return }
+    const url = `${window.location.origin}/form/${data.id}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    toast.success('Form published! Link copied to clipboard')
+    onPublished()
+  }
+
+  const inputRow = {
+    display: 'flex', alignItems: 'center',
+    background: '#0a0a0f', border: '1px solid #1e2130',
+    borderRadius: '8px', overflow: 'hidden',
+  }
+
+  const pwInput = {
+    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+    padding: '11px 14px', color: '#f8fafc',
+    fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+  }
+
+  const eyeBtn = {
+    background: 'transparent', border: 'none',
+    padding: '0 12px', color: '#64748b', cursor: 'pointer',
+    display: 'flex', alignItems: 'center',
+  }
+
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.72)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+      }}
+    >
+      <div style={{
+        background: '#0f1117', border: '1px solid #1e2130',
+        borderRadius: '16px', padding: '28px',
+        width: '100%', maxWidth: '460px',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+      }}>
+        <h2 style={{
+          fontFamily: 'Syne, sans-serif', fontWeight: 700,
+          fontSize: '20px', color: '#f8fafc', marginBottom: '24px',
+        }}>
+          Form Settings
+        </h2>
+
+        {/* Visibility cards */}
+        <p style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+          color: '#f8fafc', fontWeight: 500, marginBottom: '12px',
+        }}>
+          Who can access this form?
+        </p>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: isPrivate ? '24px' : '32px' }}>
+          {[
+            { val: false, Icon: Globe, title: 'Public',  desc: 'Anyone with the link can submit' },
+            { val: true,  Icon: Lock,  title: 'Private', desc: 'Requires a password to submit' },
+          ].map(({ val, Icon, title, desc }) => {
+            const sel = isPrivate === val
+            return (
+              <div
+                key={title}
+                onClick={() => setIsPrivate(val)}
+                style={{
+                  flex: 1, border: `1px solid ${sel ? '#00d4ff' : '#1e2130'}`,
+                  borderRadius: '10px', padding: '16px',
+                  cursor: 'pointer',
+                  background: sel ? 'rgba(0,212,255,0.06)' : '#0a0a0f',
+                  transition: 'border-color 0.15s, background 0.15s',
+                }}
+              >
+                <Icon size={20} color={sel ? '#00d4ff' : '#64748b'} style={{ marginBottom: '8px' }} />
+                <p style={{
+                  fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: 500,
+                  color: sel ? '#f8fafc' : '#94a3b8', marginBottom: '4px',
+                }}>
+                  {title}
+                </p>
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                  {desc}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Password fields */}
+        {isPrivate && (
+          <div style={{ marginBottom: '32px' }}>
+            <p style={{
+              fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+              color: '#94a3b8', fontWeight: 500, marginBottom: '10px',
+            }}>
+              Set a password
+            </p>
+            <div style={{ ...inputRow, marginBottom: '10px' }}>
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                style={pwInput}
+              />
+              <button type="button" onClick={() => setShowPw(!showPw)} style={eyeBtn}>
+                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+            <div style={{ ...inputRow, marginBottom: '10px' }}>
+              <input
+                type={showConfirm ? 'text' : 'password'}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Confirm password"
+                onKeyDown={(e) => e.key === 'Enter' && handlePublish()}
+                style={pwInput}
+              />
+              <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeBtn}>
+                {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+              Share this password with people you want to have access
+            </p>
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={onClose}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+            style={{
+              flex: 1, background: 'transparent',
+              border: '1px solid #1e2130', borderRadius: '8px',
+              padding: '12px', color: '#94a3b8',
+              fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+              cursor: 'pointer', transition: 'border-color 0.15s',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={publishing}
+            onMouseEnter={(e) => !publishing && (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = publishing ? '0.8' : '1')}
+            style={{
+              flex: 2, background: '#00d4ff', border: 'none',
+              borderRadius: '8px', padding: '12px',
+              color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
+              fontSize: '14px', fontWeight: 700,
+              cursor: publishing ? 'default' : 'pointer',
+              opacity: publishing ? 0.8 : 1,
+              transition: 'opacity 0.15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            {publishing ? (
+              <>
+                <span style={{
+                  width: 14, height: 14,
+                  border: '2px solid rgba(10,10,15,0.3)',
+                  borderTopColor: '#0a0a0f', borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 0.65s linear infinite',
+                }} />
+                Publishing…
+              </>
+            ) : 'Publish Form →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Builder page ─────────────────────────────────────────────────────────────
 
 export default function Builder() {
@@ -641,7 +848,7 @@ export default function Builder() {
   const [fields, setFields]                   = useState([])
   const [selectedFieldId, setSelectedFieldId] = useState(null)
   const [draggedId, setDraggedId]             = useState(null)
-  const [publishing, setPublishing]           = useState(false)
+  const [showPublishModal, setShowPublishModal] = useState(false)
   const [activeTab, setActiveTab]             = useState('canvas')
 
   const selectedField = fields.find((f) => f.id === selectedFieldId) ?? null
@@ -673,19 +880,9 @@ export default function Builder() {
     if (selectedFieldId === id) setSelectedFieldId(null)
   }
 
-  const publish = async () => {
+  const openPublishModal = () => {
     if (!user) { toast.error('Please sign in to publish'); return }
-    setPublishing(true)
-    const { data, error } = await supabase
-      .from('forms')
-      .insert({ user_id: user.id, title: formTitle || 'Untitled Form', fields })
-      .select()
-      .single()
-    setPublishing(false)
-    if (error) { toast.error('Failed to publish form'); return }
-    const url = `${window.location.origin}/form/${data.id}`
-    navigator.clipboard.writeText(url).catch(() => {})
-    toast.success('🎉 Form published! Link copied to clipboard')
+    setShowPublishModal(true)
   }
 
   const preview = () => {
@@ -728,30 +925,18 @@ export default function Builder() {
             <Eye size={14} />
           </button>
           <button
-            onClick={publish}
-            disabled={publishing}
-            onMouseEnter={(e) => !publishing && (e.currentTarget.style.opacity = '0.88')}
+            onClick={openPublishModal}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
             style={{
               background: '#00d4ff', border: 'none', color: '#0a0a0f',
               fontFamily: 'DM Sans, sans-serif', fontSize: '12px', fontWeight: 700,
               borderRadius: 8, padding: '6px 14px',
-              cursor: publishing ? 'default' : 'pointer', opacity: publishing ? 0.8 : 1,
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+              cursor: 'pointer', flexShrink: 0,
               transition: 'opacity 0.15s',
             }}
           >
-            {publishing ? (
-              <>
-                <span style={{
-                  width: 10, height: 10,
-                  border: '2px solid rgba(10,10,15,0.3)',
-                  borderTopColor: '#0a0a0f', borderRadius: '50%',
-                  display: 'inline-block', animation: 'spin 0.65s linear infinite',
-                }} />
-                Publishing…
-              </>
-            ) : 'Publish →'}
+            Publish →
           </button>
         </div>
 
@@ -852,6 +1037,16 @@ export default function Builder() {
             <Plus size={24} color="#0a0a0f" />
           </button>
         )}
+
+        {showPublishModal && (
+          <PublishModal
+            formTitle={formTitle}
+            fields={fields}
+            user={user}
+            onClose={() => setShowPublishModal(false)}
+            onPublished={() => setShowPublishModal(false)}
+          />
+        )}
       </div>
     )
   }
@@ -905,34 +1100,18 @@ export default function Builder() {
           </button>
 
           <button
-            onClick={publish}
-            disabled={publishing}
-            onMouseEnter={(e) => !publishing && (e.currentTarget.style.opacity = '0.88')}
+            onClick={openPublishModal}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
             style={{
               background: '#00d4ff', border: 'none',
               color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
               fontSize: '13px', fontWeight: 700,
               borderRadius: '8px', padding: '7px 18px',
-              cursor: publishing ? 'default' : 'pointer',
-              opacity: publishing ? 0.8 : 1,
-              flexShrink: 0, transition: 'opacity 0.15s',
-              display: 'flex', alignItems: 'center', gap: '6px',
+              cursor: 'pointer', flexShrink: 0, transition: 'opacity 0.15s',
             }}
           >
-            {publishing ? (
-              <>
-                <span style={{
-                  width: 12, height: 12,
-                  border: '2px solid rgba(10,10,15,0.3)',
-                  borderTopColor: '#0a0a0f',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  animation: 'spin 0.65s linear infinite',
-                }} />
-                Publishing…
-              </>
-            ) : 'Publish →'}
+            Publish →
           </button>
         </div>
 
@@ -988,6 +1167,16 @@ export default function Builder() {
         field={selectedField}
         onUpdate={(changes) => selectedField && updateField(selectedField.id, changes)}
       />
+
+      {showPublishModal && (
+        <PublishModal
+          formTitle={formTitle}
+          fields={fields}
+          user={user}
+          onClose={() => setShowPublishModal(false)}
+          onPublished={() => setShowPublishModal(false)}
+        />
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast'
 import {
   Search, Download, ChevronDown, ChevronRight, Copy,
   Plus, FileText, BarChart2, XCircle, CheckCircle,
+  Globe, Lock, Eye, EyeOff,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -783,7 +784,37 @@ function FormSettings({ form, onUpdateForm }) {
   )
   const [saving, setSaving] = useState(false)
 
+  const [privacyOpen, setPrivacyOpen]       = useState(false)
+  const [privacyMode, setPrivacyMode]       = useState(form.is_private ? 'private' : 'public')
+  const [privacyPw, setPrivacyPw]           = useState('')
+  const [showPrivacyPw, setShowPrivacyPw]   = useState(false)
+  const [savingPrivacy, setSavingPrivacy]   = useState(false)
+
   const isActive = form.is_active !== false
+
+  const savePrivacy = async () => {
+    const newPrivate = privacyMode === 'private'
+    if (newPrivate && !privacyPw && !form.is_private) {
+      toast.error('Enter a password for the private form')
+      return
+    }
+    setSavingPrivacy(true)
+    const updates = {
+      is_private:    newPrivate,
+      form_password: newPrivate ? (privacyPw || form.form_password) : null,
+    }
+    onUpdateForm(form.id, updates)
+    const { error } = await supabase.from('forms').update(updates).eq('id', form.id)
+    if (error) {
+      toast.error('Failed to update privacy settings')
+      onUpdateForm(form.id, { is_private: form.is_private, form_password: form.form_password })
+    } else {
+      toast.success(newPrivate ? 'Form is now private' : 'Form is now public')
+      setPrivacyPw('')
+      setPrivacyOpen(false)
+    }
+    setSavingPrivacy(false)
+  }
 
   const toggleActive = async () => {
     if (!confirming) { setConfirming(true); return }
@@ -877,6 +908,136 @@ function FormSettings({ form, onUpdateForm }) {
           >
             Cancel
           </button>
+        </div>
+      )}
+
+      <div style={{ width: 1, height: 24, background: '#1e2130', flexShrink: 0 }} />
+
+      {/* Privacy indicator */}
+      <button
+        onClick={() => setPrivacyOpen(!privacyOpen)}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = form.is_private ? '#f59e0b' : '#64748b')}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          background: 'transparent', border: '1px solid #1e2130',
+          borderRadius: '6px', padding: '5px 12px',
+          color: form.is_private ? '#f59e0b' : '#64748b',
+          fontFamily: 'DM Sans, sans-serif', fontSize: '12px', fontWeight: 500,
+          cursor: 'pointer', transition: 'border-color 0.15s',
+        }}
+      >
+        {form.is_private ? <Lock size={12} /> : <Globe size={12} />}
+        {form.is_private ? 'Private' : 'Public'}
+      </button>
+
+      {/* Privacy modal */}
+      {privacyOpen && (
+        <div
+          onClick={(e) => e.target === e.currentTarget && setPrivacyOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div style={{
+            background: '#0f1117', border: '1px solid #1e2130',
+            borderRadius: '12px', padding: '20px',
+            width: '100%', maxWidth: '280px',
+            boxShadow: '0 16px 60px rgba(0,0,0,0.6)',
+          }}>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', fontWeight: 500, color: '#f8fafc', marginBottom: '12px' }}>
+              Form visibility
+            </p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+              {[
+                { mode: 'public',  Icon: Globe, label: 'Public',  col: '#00d4ff' },
+                { mode: 'private', Icon: Lock,  label: 'Private', col: '#f59e0b' },
+              ].map(({ mode, Icon, label, col }) => {
+                const sel = privacyMode === mode
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setPrivacyMode(mode)}
+                    style={{
+                      flex: 1, borderRadius: '6px', padding: '7px',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      background: sel ? `rgba(${mode === 'private' ? '245,158,11' : '0,212,255'},0.1)` : '#0a0a0f',
+                      border: `1px solid ${sel ? col : '#1e2130'}`,
+                      color: sel ? col : '#64748b',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                    }}
+                  >
+                    <Icon size={12} /> {label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {privacyMode === 'private' && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  background: '#0a0a0f', border: '1px solid #1e2130',
+                  borderRadius: '6px', overflow: 'hidden',
+                }}>
+                  <input
+                    type={showPrivacyPw ? 'text' : 'password'}
+                    value={privacyPw}
+                    onChange={(e) => setPrivacyPw(e.target.value)}
+                    placeholder={form.is_private ? 'New password (blank = keep)' : 'Set a password'}
+                    style={{
+                      flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                      padding: '8px 10px', color: '#f8fafc',
+                      fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPrivacyPw(!showPrivacyPw)}
+                    style={{
+                      background: 'transparent', border: 'none',
+                      padding: '0 8px', color: '#64748b', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center',
+                    }}
+                  >
+                    {showPrivacyPw ? <EyeOff size={12} /> : <Eye size={12} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setPrivacyOpen(false)}
+                style={{
+                  flex: 1, background: 'transparent', border: '1px solid #1e2130',
+                  borderRadius: '6px', padding: '8px',
+                  color: '#64748b', fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '12px', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={savePrivacy}
+                disabled={savingPrivacy}
+                style={{
+                  flex: 2, background: '#00d4ff', border: 'none',
+                  borderRadius: '6px', padding: '8px',
+                  color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '12px', fontWeight: 700,
+                  cursor: savingPrivacy ? 'default' : 'pointer',
+                  opacity: savingPrivacy ? 0.7 : 1,
+                }}
+              >
+                {savingPrivacy ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

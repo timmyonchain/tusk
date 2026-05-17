@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast'
 import QRCode from 'qrcode'
 import {
   Star, Upload, Link as LinkIcon, Share2, Copy,
-  CheckCircle, ChevronDown, ChevronUp,
+  CheckCircle, ChevronDown, ChevronUp, Lock, Eye, EyeOff,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -453,6 +453,121 @@ function BlobReceipt({ receiptId, timestamp }) {
   )
 }
 
+// ─── Password Gate ────────────────────────────────────────────────────────────
+
+function PasswordGateScreen({ form, onUnlock }) {
+  const [pw, setPw]           = useState('')
+  const [showPw, setShowPw]   = useState(false)
+  const [shaking, setShaking] = useState(false)
+
+  const handleAccess = () => {
+    if (pw === form.form_password) {
+      onUnlock()
+    } else {
+      toast.error('Incorrect password. Please try again.')
+      setShaking(true)
+      setTimeout(() => setShaking(false), 600)
+      setPw('')
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: 'calc(100vh - 64px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', padding: '40px 24px',
+    }}>
+      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+        <span style={{
+          fontFamily: 'Syne, sans-serif', fontWeight: 800,
+          fontSize: '18px', color: '#00d4ff', letterSpacing: '0.15em',
+        }}>
+          TUSK
+        </span>
+      </div>
+
+      <div style={{
+        background: '#0f1117', border: '1px solid #1e2130',
+        borderRadius: '16px', padding: '40px 32px',
+        width: '100%', maxWidth: '400px', textAlign: 'center',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px',
+        }}>
+          <Lock size={24} color="#00d4ff" />
+        </div>
+
+        <h2 style={{
+          fontFamily: 'Syne, sans-serif', fontWeight: 700,
+          fontSize: '1.4rem', color: '#f8fafc', marginBottom: '8px',
+        }}>
+          This form is private
+        </h2>
+        <p style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+          color: '#64748b', marginBottom: '28px', lineHeight: 1.6,
+        }}>
+          Enter the password to access this form
+        </p>
+
+        <div
+          className={shaking ? undefined : undefined}
+          style={{
+            display: 'flex', alignItems: 'center',
+            background: '#0a0a0f', border: '1px solid #1e2130',
+            borderRadius: '8px', overflow: 'hidden',
+            marginBottom: '16px',
+            animation: shaking ? 'shake 0.5s ease' : 'none',
+          }}
+        >
+          <input
+            type={showPw ? 'text' : 'password'}
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAccess()}
+            placeholder="Enter password"
+            autoFocus
+            style={{
+              flex: 1, background: 'transparent', border: 'none', outline: 'none',
+              padding: '12px 16px', color: '#f8fafc',
+              fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPw(!showPw)}
+            style={{
+              background: 'transparent', border: 'none',
+              padding: '0 14px', color: '#64748b', cursor: 'pointer',
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+
+        <button
+          onClick={handleAccess}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          style={{
+            width: '100%', background: '#00d4ff', border: 'none',
+            borderRadius: '8px', padding: '14px',
+            color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
+            fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+            transition: 'opacity 0.15s',
+          }}
+        >
+          Access Form →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Closed / Limit Screens ───────────────────────────────────────────────────
 
 function ClosedScreen() {
@@ -594,6 +709,7 @@ export default function FormView() {
   const [notFound, setNotFound]         = useState(false)
   const [formClosed, setFormClosed]     = useState(false)
   const [limitReached, setLimitReached] = useState(false)
+  const [unlocked, setUnlocked]         = useState(false)
   const [answers, setAnswers]           = useState({})
   const [errors, setErrors]             = useState([])
   const [submitting, setSubmitting]     = useState(false)
@@ -716,6 +832,7 @@ export default function FormView() {
 
   if (formClosed) return <ClosedScreen />
   if (limitReached) return <LimitReachedScreen />
+  if (form?.is_private && !unlocked) return <PasswordGateScreen form={form} onUnlock={() => setUnlocked(true)} />
 
   // ── Not found ──────────────────────────────────────────────────────────────
   if (notFound) {
