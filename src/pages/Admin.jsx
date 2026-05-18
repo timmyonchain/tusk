@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast'
 import {
   Search, Download, ChevronDown, ChevronRight, Copy,
   Plus, FileText, BarChart2, XCircle, CheckCircle,
-  Globe, Lock, Eye, EyeOff,
+  Globe, Lock, Eye, EyeOff, Link2, Trash2, AlertTriangle,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -358,7 +358,7 @@ function StatsRow({ submissions, mobile }) {
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
 
-function TopBar({ form, search, onSearch, statusFilter, onStatusFilter, onExport }) {
+function TopBar({ form, search, onSearch, statusFilter, onStatusFilter, onExport, onCopyLink }) {
   return (
     <div style={{
       padding: '16px 24px', borderBottom: '1px solid #1e2130',
@@ -373,6 +373,24 @@ function TopBar({ form, search, onSearch, statusFilter, onStatusFilter, onExport
       }}>
         {form.title || 'Untitled Form'}
       </h2>
+
+      {/* Copy Link */}
+      <button
+        onClick={onCopyLink}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#00d4ff')}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          background: 'transparent', border: '1px solid #1e2130',
+          borderRadius: '8px', padding: '8px 14px',
+          color: '#00d4ff', fontFamily: 'DM Sans, sans-serif',
+          fontSize: '13px', cursor: 'pointer', flexShrink: 0,
+          transition: 'border-color 0.15s',
+        }}
+      >
+        <Link2 size={13} />
+        Copy Link
+      </button>
 
       {/* Search */}
       <div style={{
@@ -621,9 +639,100 @@ function NoFormSelected({ forms, onSelectForm }) {
   )
 }
 
+// ─── Delete Modal ─────────────────────────────────────────────────────────────
+
+function DeleteModal({ form, onConfirm, onCancel, deleting }) {
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && onCancel()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+      }}
+    >
+      <div style={{
+        background: '#0f1117', border: '1px solid #1e2130',
+        borderRadius: '16px', padding: '28px',
+        width: '100%', maxWidth: '400px',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: '50%',
+          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px',
+        }}>
+          <AlertTriangle size={24} color="#ef4444" />
+        </div>
+        <h2 style={{
+          fontFamily: 'Syne, sans-serif', fontWeight: 700,
+          fontSize: '18px', color: '#f8fafc', marginBottom: '12px',
+        }}>
+          Delete this form?
+        </h2>
+        <p style={{
+          fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+          color: '#94a3b8', lineHeight: 1.6, marginBottom: '28px',
+        }}>
+          This will permanently delete{' '}
+          <span style={{ color: '#f8fafc', fontWeight: 500 }}>
+            {form.title || 'Untitled Form'}
+          </span>{' '}
+          and all its submissions. This cannot be undone.
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={onCancel}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+            style={{
+              flex: 1, background: 'transparent',
+              border: '1px solid #1e2130', borderRadius: '8px',
+              padding: '12px', color: '#94a3b8',
+              fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+              cursor: 'pointer', transition: 'border-color 0.15s',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={deleting}
+            style={{
+              flex: 1, background: '#ef4444', border: 'none',
+              borderRadius: '8px', padding: '12px',
+              color: '#fff', fontFamily: 'DM Sans, sans-serif',
+              fontSize: '14px', fontWeight: 700,
+              cursor: deleting ? 'default' : 'pointer',
+              opacity: deleting ? 0.7 : 1, transition: 'opacity 0.15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            {deleting ? (
+              <>
+                <span style={{
+                  width: 14, height: 14,
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#fff', borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 0.65s linear infinite',
+                }} />
+                Deleting…
+              </>
+            ) : 'Delete Forever'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Forms Sidebar ────────────────────────────────────────────────────────────
 
-function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate, loading }) {
+function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate, loading, onCopyLink, onDelete }) {
   return (
     <aside style={{
       width: 280, flexShrink: 0,
@@ -688,42 +797,80 @@ function FormsSidebar({ forms, selectedFormId, onSelectForm, navigate, loading }
                 key={form.id}
                 onClick={() => onSelectForm(form.id)}
                 style={{
-                  padding: '14px 16px',
+                  padding: '12px 12px 12px 16px',
                   background: selected ? '#0f1117' : 'transparent',
                   borderLeft: `3px solid ${selected ? '#00d4ff' : 'transparent'}`,
                   borderBottom: '1px solid #0f1117',
                   cursor: 'pointer', transition: 'background 0.1s',
+                  display: 'flex', alignItems: 'flex-start', gap: '8px',
                 }}
                 onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = '#0c0c14' }}
                 onMouseLeave={(e) => { if (!selected) e.currentTarget.style.background = 'transparent' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <span style={{
-                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                    background: form.is_active !== false ? '#10b981' : '#ef4444',
-                  }} />
-                  <p style={{
-                    fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-                    color: selected ? '#f8fafc' : '#e2e8f0',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    flex: 1, minWidth: 0, margin: 0,
-                  }}>
-                    {form.title || 'Untitled Form'}
+                {/* Text content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <span style={{
+                      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                      background: form.is_active !== false ? '#10b981' : '#ef4444',
+                    }} />
+                    <p style={{
+                      fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+                      color: selected ? '#f8fafc' : '#e2e8f0',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      flex: 1, minWidth: 0, margin: 0,
+                    }}>
+                      {form.title || 'Untitled Form'}
+                    </p>
+                  </div>
+                  {form.is_active === false && (
+                    <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#ef4444', marginBottom: '2px' }}>
+                      Revoked
+                    </p>
+                  )}
+                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', marginBottom: '2px' }}>
+                    {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
                   </p>
+                  {form.created_at && (
+                    <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#334155' }}>
+                      {new Date(form.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  )}
                 </div>
-                {form.is_active === false && (
-                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#ef4444', marginBottom: '2px' }}>
-                    Revoked
-                  </p>
-                )}
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', marginBottom: '2px' }}>
-                  {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
-                </p>
-                {form.created_at && (
-                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#334155' }}>
-                    {new Date(form.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
-                )}
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: '2px', flexShrink: 0, paddingTop: '2px' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onCopyLink(form.id) }}
+                    title="Copy form link"
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#00d4ff'; e.currentTarget.style.background = 'rgba(0,212,255,0.08)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'transparent' }}
+                    style={{
+                      background: 'transparent', border: 'none',
+                      borderRadius: '5px', padding: '5px',
+                      color: '#475569', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center',
+                      transition: 'color 0.15s, background 0.15s',
+                    }}
+                  >
+                    <Link2 size={13} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(form) }}
+                    title="Delete form"
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.background = 'transparent' }}
+                    style={{
+                      background: 'transparent', border: 'none',
+                      borderRadius: '5px', padding: '5px',
+                      color: '#475569', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center',
+                      transition: 'color 0.15s, background 0.15s',
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             )
           })
@@ -1139,6 +1286,8 @@ export default function Admin() {
   const [subsLoading, setSubsLoading]   = useState(false)
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting]         = useState(false)
 
   // Load forms + submission counts
   useEffect(() => {
@@ -1213,6 +1362,32 @@ export default function Admin() {
     setForms(prev => prev.map(f => f.id === formId ? { ...f, ...updates } : f))
   }
 
+  const handleCopyLink = (formId) => {
+    const url = `https://www.tusk.ink/form/${formId}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    toast.success('Link copied!')
+  }
+
+  const deleteForm = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    await supabase.from('submissions').delete().eq('form_id', deleteTarget.id)
+    const { error } = await supabase.from('forms').delete().eq('id', deleteTarget.id)
+    if (error) {
+      toast.error('Failed to delete form')
+      setDeleting(false)
+      return
+    }
+    setForms(prev => prev.filter(f => f.id !== deleteTarget.id))
+    if (selectedFormId === deleteTarget.id) {
+      setSelectedFormId(null)
+      setSubmissions([])
+    }
+    setDeleteTarget(null)
+    setDeleting(false)
+    toast.success('Form deleted')
+  }
+
   const handleExport = () => {
     if (selectedForm && submissions.length > 0) exportCSV(selectedForm, submissions)
     else toast.error('No submissions to export')
@@ -1262,11 +1437,11 @@ export default function Admin() {
                     key={form.id}
                     onClick={() => setSelectedFormId(form.id)}
                     style={{
-                      padding: '10px 16px', cursor: 'pointer',
+                      padding: '10px 12px 10px 16px', cursor: 'pointer',
                       background: selected ? '#0f1117' : 'transparent',
                       borderLeft: `3px solid ${selected ? '#00d4ff' : 'transparent'}`,
                       borderBottom: '1px solid #0f1117',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                      display: 'flex', alignItems: 'center', gap: 6,
                       transition: 'background 0.1s',
                     }}
                   >
@@ -1290,7 +1465,30 @@ export default function Admin() {
                         {form.is_active === false ? ' · Revoked' : ''}
                       </p>
                     </div>
-                    <ChevronRight size={13} color={selected ? '#00d4ff' : '#334155'} style={{ flexShrink: 0 }} />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCopyLink(form.id) }}
+                      style={{
+                        background: 'transparent', border: 'none', borderRadius: 5,
+                        padding: 5, color: '#475569', cursor: 'pointer', display: 'flex',
+                        flexShrink: 0, transition: 'color 0.15s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#00d4ff')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
+                    >
+                      <Link2 size={13} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(form) }}
+                      style={{
+                        background: 'transparent', border: 'none', borderRadius: 5,
+                        padding: 5, color: '#475569', cursor: 'pointer', display: 'flex',
+                        flexShrink: 0, transition: 'color 0.15s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 )
               })
@@ -1383,6 +1581,15 @@ export default function Admin() {
             </>
           )}
         </div>
+
+        {deleteTarget && (
+          <DeleteModal
+            form={deleteTarget}
+            onConfirm={deleteForm}
+            onCancel={() => setDeleteTarget(null)}
+            deleting={deleting}
+          />
+        )}
       </div>
     )
   }
@@ -1397,6 +1604,8 @@ export default function Admin() {
         onSelectForm={setSelectedFormId}
         navigate={navigate}
         loading={formsLoading}
+        onCopyLink={handleCopyLink}
+        onDelete={setDeleteTarget}
       />
 
       {/* Right main area */}
@@ -1415,6 +1624,7 @@ export default function Admin() {
               statusFilter={statusFilter}
               onStatusFilter={setStatusFilter}
               onExport={handleExport}
+              onCopyLink={() => handleCopyLink(selectedForm.id)}
             />
             <FormSettings key={selectedForm.id} form={selectedForm} onUpdateForm={updateForm} />
             <StatsRow submissions={submissions} />
@@ -1431,6 +1641,15 @@ export default function Admin() {
           </>
         )}
       </div>
+
+      {deleteTarget && (
+        <DeleteModal
+          form={deleteTarget}
+          onConfirm={deleteForm}
+          onCancel={() => setDeleteTarget(null)}
+          deleting={deleting}
+        />
+      )}
     </div>
   )
 }

@@ -633,13 +633,17 @@ function RightPanel({ field, onUpdate, mobile = false, onBack }) {
 
 // ─── Publish Modal ────────────────────────────────────────────────────────────
 
-function PublishModal({ formTitle, fields, user, onClose, onPublished }) {
+function PublishModal({ formTitle, fields, user, onClose, onReset }) {
   const [isPrivate, setIsPrivate]     = useState(false)
   const [password, setPassword]       = useState('')
   const [confirm, setConfirm]         = useState('')
   const [showPw, setShowPw]           = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [publishing, setPublishing]   = useState(false)
+  const [publishedId, setPublishedId] = useState(null)
+  const [copied, setCopied]           = useState(false)
+
+  const publishedUrl = publishedId ? `https://www.tusk.ink/form/${publishedId}` : ''
 
   const handlePublish = async () => {
     if (isPrivate) {
@@ -660,12 +664,111 @@ function PublishModal({ formTitle, fields, user, onClose, onPublished }) {
       .single()
     setPublishing(false)
     if (error) { toast.error('Failed to publish form'); return }
-    const url = `${window.location.origin}/form/${data.id}`
-    navigator.clipboard.writeText(url).catch(() => {})
-    toast.success('Form published! Link copied to clipboard')
-    onPublished()
+    toast.success('Form published!')
+    setPublishedId(data.id)
   }
 
+  const copyLink = () => {
+    navigator.clipboard.writeText(publishedUrl).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const overlayStyle = {
+    position: 'fixed', inset: 0, zIndex: 1000,
+    background: 'rgba(0,0,0,0.72)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px',
+  }
+
+  const cardStyle = {
+    background: '#0f1117', border: '1px solid #1e2130',
+    borderRadius: '16px', padding: '28px',
+    width: '100%', maxWidth: '460px',
+    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+  }
+
+  const outlineBtn = {
+    flex: 1, background: 'transparent',
+    border: '1px solid #1e2130', borderRadius: '8px',
+    padding: '12px', color: '#94a3b8',
+    fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+    cursor: 'pointer', transition: 'border-color 0.15s',
+  }
+
+  // ── Success screen ──────────────────────────────────────────────────────────
+  if (publishedId) {
+    return (
+      <div onClick={(e) => e.target === e.currentTarget && onClose()} style={overlayStyle}>
+        <div style={cardStyle}>
+          <h2 style={{
+            fontFamily: 'Syne, sans-serif', fontWeight: 700,
+            fontSize: '20px', color: '#f8fafc', marginBottom: '8px',
+          }}>
+            Form Published!
+          </h2>
+          <p style={{
+            fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+            color: '#64748b', marginBottom: '20px',
+          }}>
+            Your form is live. Share the link below.
+          </p>
+
+          {/* URL row */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <input
+              readOnly
+              value={publishedUrl}
+              style={{
+                flex: 1, background: '#0a0a0f',
+                border: '1px solid #1e2130', borderRadius: '8px',
+                padding: '10px 14px', color: '#94a3b8',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
+                outline: 'none', minWidth: 0,
+              }}
+            />
+            <button
+              onClick={copyLink}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: copied ? 'rgba(0,212,255,0.12)' : '#00d4ff',
+                border: `1px solid ${copied ? '#00d4ff' : 'transparent'}`,
+                borderRadius: '8px', padding: '10px 16px',
+                color: copied ? '#00d4ff' : '#0a0a0f',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '13px', fontWeight: 700,
+                cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s',
+              }}
+            >
+              <Link size={14} />
+              {copied ? 'Copied!' : 'Copy Link'}
+            </button>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => window.open(publishedUrl, '_blank')}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+              style={{ ...outlineBtn, color: '#f8fafc' }}
+            >
+              View Form →
+            </button>
+            <button
+              onClick={onReset}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+              style={outlineBtn}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Settings screen ─────────────────────────────────────────────────────────
   const inputRow = {
     display: 'flex', alignItems: 'center',
     background: '#0a0a0f', border: '1px solid #1e2130',
@@ -687,19 +790,9 @@ function PublishModal({ formTitle, fields, user, onClose, onPublished }) {
   return (
     <div
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.72)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px',
-      }}
+      style={overlayStyle}
     >
-      <div style={{
-        background: '#0f1117', border: '1px solid #1e2130',
-        borderRadius: '16px', padding: '28px',
-        width: '100%', maxWidth: '460px',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-      }}>
+      <div style={cardStyle}>
         <h2 style={{
           fontFamily: 'Syne, sans-serif', fontWeight: 700,
           fontSize: '20px', color: '#f8fafc', marginBottom: '24px',
@@ -793,13 +886,7 @@ function PublishModal({ formTitle, fields, user, onClose, onPublished }) {
             onClick={onClose}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
             onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
-            style={{
-              flex: 1, background: 'transparent',
-              border: '1px solid #1e2130', borderRadius: '8px',
-              padding: '12px', color: '#94a3b8',
-              fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-              cursor: 'pointer', transition: 'border-color 0.15s',
-            }}
+            style={outlineBtn}
           >
             Cancel
           </button>
@@ -883,6 +970,13 @@ export default function Builder() {
   const openPublishModal = () => {
     if (!user) { toast.error('Please sign in to publish'); return }
     setShowPublishModal(true)
+  }
+
+  const resetBuilder = () => {
+    setFormTitle('')
+    setFields([])
+    setSelectedFieldId(null)
+    setShowPublishModal(false)
   }
 
   const preview = () => {
@@ -1044,7 +1138,7 @@ export default function Builder() {
             fields={fields}
             user={user}
             onClose={() => setShowPublishModal(false)}
-            onPublished={() => setShowPublishModal(false)}
+            onReset={resetBuilder}
           />
         )}
       </div>
@@ -1174,7 +1268,7 @@ export default function Builder() {
           fields={fields}
           user={user}
           onClose={() => setShowPublishModal(false)}
-          onPublished={() => setShowPublishModal(false)}
+          onReset={resetBuilder}
         />
       )}
     </div>
