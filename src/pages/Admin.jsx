@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import {
-  Search, Download, ChevronDown, ChevronRight, Copy,
+  Search, Download, ChevronDown, ChevronRight, ChevronUp, Copy,
   Plus, FileText, BarChart2, XCircle, CheckCircle,
   Globe, Lock, Eye, EyeOff, Link2, Trash2, AlertTriangle,
 } from 'lucide-react'
@@ -1272,6 +1272,217 @@ function MobileSubmissionsView({ form, submissions, search, statusFilter, onStat
   )
 }
 
+// ─── Mobile Accordion Card ───────────────────────────────────────────────────
+
+function MobileAccordionCard({ form, expanded, onToggle, onCopyLink, onDelete, onUpdateForm }) {
+  const [submissions, setSubmissions]   = useState([])
+  const [subsLoading, setSubsLoading]   = useState(false)
+  const [search, setSearch]             = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
+  const cardRef = useRef(null)
+
+  useEffect(() => {
+    if (!expanded) return
+    setSubsLoading(true)
+    setSearch('')
+    setStatusFilter('All')
+    supabase
+      .from('submissions')
+      .select('*')
+      .eq('form_id', form.id)
+      .order('submitted_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) toast.error('Failed to load submissions')
+        else setSubmissions(data || [])
+        setSubsLoading(false)
+      })
+    setTimeout(() => {
+      if (cardRef.current) {
+        const rect = cardRef.current.getBoundingClientRect()
+        window.scrollTo({ top: window.pageYOffset + rect.top - 60, behavior: 'smooth' })
+      }
+    }, 50)
+  }, [expanded, form.id])
+
+  const handleStatusUpdate = async (subId, newStatus) => {
+    setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, status: newStatus } : s))
+    const { error } = await supabase
+      .from('submissions').update({ status: newStatus }).eq('id', subId)
+    if (error) toast.error('Failed to update status')
+  }
+
+  const handleExport = () => {
+    if (submissions.length > 0) exportCSV(form, submissions)
+    else toast.error('No submissions to export')
+  }
+
+  return (
+    <div
+      ref={cardRef}
+      style={{
+        background: '#0f1117',
+        border: '1px solid #1e2130',
+        borderRadius: 12,
+        marginBottom: 8,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Always-visible header row */}
+      <div
+        onClick={onToggle}
+        style={{
+          padding: 16, display: 'flex', alignItems: 'center',
+          gap: 10, cursor: 'pointer', userSelect: 'none',
+        }}
+      >
+        <span style={{
+          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+          background: form.is_active !== false ? '#10b981' : '#ef4444',
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontFamily: 'DM Sans, sans-serif', fontSize: 15, color: '#f8fafc',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0,
+          }}>
+            {form.title || 'Untitled Form'}
+          </p>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
+            {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onCopyLink(form.id) }}
+          title="Copy form link"
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#00d4ff'; e.currentTarget.style.background = 'rgba(0,212,255,0.08)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'transparent' }}
+          style={{
+            background: 'transparent', border: 'none', borderRadius: 6,
+            padding: 6, color: '#64748b', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', flexShrink: 0,
+            transition: 'color 0.15s, background 0.15s',
+          }}
+        >
+          <Link2 size={14} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(form) }}
+          title="Delete form"
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'transparent' }}
+          style={{
+            background: 'transparent', border: 'none', borderRadius: 6,
+            padding: 6, color: '#64748b', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', flexShrink: 0,
+            transition: 'color 0.15s, background 0.15s',
+          }}
+        >
+          <Trash2 size={14} />
+        </button>
+        <ChevronDown
+          size={16}
+          color="#64748b"
+          style={{
+            flexShrink: 0,
+            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.3s ease',
+          }}
+        />
+      </div>
+
+      {/* Expandable body — max-height transition for smooth open */}
+      <div style={{
+        maxHeight: expanded ? 2000 : 0,
+        overflow: 'hidden',
+        transition: 'max-height 0.3s ease',
+      }}>
+        {expanded && (
+          <div style={{ borderTop: '1px solid #1e2130' }}>
+            {/* Search */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: '#0a0a0f', border: '1px solid #1e2130',
+                borderRadius: 8, padding: '0 12px',
+              }}>
+                <Search size={13} color="#475569" style={{ flexShrink: 0 }} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search submissions…"
+                  style={{
+                    background: 'transparent', border: 'none', outline: 'none',
+                    color: '#f8fafc', fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 13, padding: '8px 0', width: '100%',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Status filter + Export CSV */}
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid #1e2130', display: 'flex', gap: 8 }}>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  flex: 1, background: '#0a0a0f', border: '1px solid #1e2130',
+                  borderRadius: 8, padding: '7px 10px',
+                  color: '#94a3b8', fontFamily: 'DM Sans, sans-serif',
+                  fontSize: 12, outline: 'none', cursor: 'pointer',
+                }}
+              >
+                {['All', ...STATUS_CYCLE].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <button
+                onClick={handleExport}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                  background: 'transparent', border: '1px solid #1e2130',
+                  borderRadius: 8, padding: '7px 12px', color: '#94a3b8',
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 12, cursor: 'pointer',
+                }}
+              >
+                <Download size={13} /> Export CSV
+              </button>
+            </div>
+
+            {/* Form settings (revoke, privacy, limit) */}
+            <FormSettings key={form.id} form={form} onUpdateForm={onUpdateForm} />
+
+            {/* Stats */}
+            <StatsRow submissions={submissions} mobile />
+
+            {/* Submissions list */}
+            <MobileSubmissionsView
+              form={form}
+              submissions={submissions}
+              search={search}
+              statusFilter={statusFilter}
+              onStatusUpdate={handleStatusUpdate}
+              loading={subsLoading}
+            />
+
+            {/* Collapse button */}
+            <button
+              onClick={onToggle}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#94a3b8')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
+              style={{
+                width: '100%', background: 'transparent', border: 'none',
+                borderTop: '1px solid #1e2130', padding: '14px 16px',
+                color: '#64748b', fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: 8, transition: 'color 0.15s',
+              }}
+            >
+              <ChevronUp size={14} /> Collapse
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -1288,6 +1499,7 @@ export default function Admin() {
   const [statusFilter, setStatusFilter] = useState('All')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting]         = useState(false)
+  const [mobileExpandedId, setMobileExpandedId] = useState(null)
 
   // Load forms + submission counts
   useEffect(() => {
@@ -1396,189 +1608,72 @@ export default function Admin() {
   // ── Mobile layout ─────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden', background: '#0a0a0f' }}>
+      <div style={{ background: '#0a0a0f', minHeight: 'calc(100vh - 64px)' }}>
 
-        {/* Forms section — max-height 220px, scrollable */}
-        <div style={{ flexShrink: 0, background: '#0a0a0f', borderBottom: '1px solid #1e2130', maxHeight: 220, display: 'flex', flexDirection: 'column' }}>
-          <div style={{
-            padding: '12px 16px', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', borderBottom: '1px solid #1e2130', flexShrink: 0,
-            background: '#0a0a0f',
+        {/* Sticky header */}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 10,
+          background: '#0a0a0f', borderBottom: '1px solid #1e2130',
+          padding: '12px 16px', display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{
+            fontFamily: 'Syne, sans-serif', fontSize: 11, color: '#64748b',
+            textTransform: 'uppercase', letterSpacing: '0.1em',
           }}>
-            <span style={{ fontFamily: 'Syne, sans-serif', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              My Forms
-            </span>
-            <button
-              onClick={() => navigate('/builder')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                background: '#00d4ff', border: 'none', borderRadius: 6,
-                padding: '4px 12px', color: '#0a0a0f',
-                fontFamily: 'DM Sans, sans-serif', fontSize: '12px', fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              <Plus size={12} /> New Form
-            </button>
-          </div>
-
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {formsLoading ? (
-              <Spinner />
-            ) : forms.length === 0 ? (
-              <div style={{ padding: '20px 16px', textAlign: 'center' }}>
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#475569' }}>No forms yet</p>
-              </div>
-            ) : (
-              forms.map(form => {
-                const selected = form.id === selectedFormId
-                return (
-                  <div
-                    key={form.id}
-                    onClick={() => setSelectedFormId(form.id)}
-                    style={{
-                      padding: '10px 12px 10px 16px', cursor: 'pointer',
-                      background: selected ? '#0f1117' : 'transparent',
-                      borderLeft: `3px solid ${selected ? '#00d4ff' : 'transparent'}`,
-                      borderBottom: '1px solid #0f1117',
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      transition: 'background 0.1s',
-                    }}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: 2 }}>
-                        <span style={{
-                          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                          background: form.is_active !== false ? '#10b981' : '#ef4444',
-                        }} />
-                        <p style={{
-                          fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
-                          color: selected ? '#f8fafc' : '#e2e8f0',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          flex: 1, minWidth: 0, margin: 0,
-                        }}>
-                          {form.title || 'Untitled Form'}
-                        </p>
-                      </div>
-                      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b' }}>
-                        {form.submissionCount} response{form.submissionCount !== 1 ? 's' : ''}
-                        {form.is_active === false ? ' · Revoked' : ''}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleCopyLink(form.id) }}
-                      style={{
-                        background: 'transparent', border: 'none', borderRadius: 5,
-                        padding: 5, color: '#475569', cursor: 'pointer', display: 'flex',
-                        flexShrink: 0, transition: 'color 0.15s',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#00d4ff')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-                    >
-                      <Link2 size={13} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(form) }}
-                      style={{
-                        background: 'transparent', border: 'none', borderRadius: 5,
-                        padding: 5, color: '#475569', cursor: 'pointer', display: 'flex',
-                        flexShrink: 0, transition: 'color 0.15s',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#475569')}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                )
-              })
-            )}
-          </div>
+            My Forms
+          </span>
+          <button
+            onClick={() => navigate('/builder')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: '#00d4ff', border: 'none', borderRadius: 6,
+              padding: '5px 12px', color: '#0a0a0f',
+              fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <Plus size={12} /> New Form
+          </button>
         </div>
 
-        {/* Submissions section */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          {!selectedForm ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', textAlign: 'center' }}>
-              <div>
-                <BarChart2 size={36} color="#1e2130" style={{ marginBottom: 12 }} />
-                <p style={{ fontFamily: 'Syne, sans-serif', fontSize: '15px', color: '#64748b', marginBottom: 6 }}>
-                  Select a form above
-                </p>
-                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#334155' }}>
-                  Tap a form to view its submissions
-                </p>
-              </div>
+        {/* Accordion list */}
+        <div style={{ padding: '12px 16px', paddingBottom: 40 }}>
+          {formsLoading ? (
+            <Spinner />
+          ) : forms.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '64px 24px' }}>
+              <BarChart2 size={40} color="#1e2130" style={{ margin: '0 auto 16px' }} />
+              <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, color: '#475569', marginBottom: 8 }}>
+                No forms yet
+              </p>
+              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: '#334155', marginBottom: 20 }}>
+                Build your first form to start collecting feedback
+              </p>
+              <button
+                onClick={() => navigate('/builder')}
+                style={{
+                  background: 'transparent', border: '1px solid #00d4ff',
+                  borderRadius: 8, padding: '10px 20px',
+                  color: '#00d4ff', fontFamily: 'DM Sans, sans-serif',
+                  fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                Create your first form →
+              </button>
             </div>
           ) : (
-            <>
-              {/* Mobile top bar */}
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e2130', background: '#0f1117', flexShrink: 0 }}>
-                <h2 style={{
-                  fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '16px',
-                  color: '#f8fafc', marginBottom: 10,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {selectedForm.title}
-                </h2>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: '#0a0a0f', border: '1px solid #1e2130',
-                  borderRadius: 8, padding: '0 12px', marginBottom: 8,
-                }}>
-                  <Search size={13} color="#475569" style={{ flexShrink: 0 }} />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search submissions…"
-                    style={{
-                      background: 'transparent', border: 'none', outline: 'none',
-                      color: '#f8fafc', fontFamily: 'DM Sans, sans-serif',
-                      fontSize: '13px', padding: '8px 0', width: '100%',
-                    }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{
-                      flex: 1, background: '#0a0a0f', border: '1px solid #1e2130',
-                      borderRadius: 8, padding: '7px 10px',
-                      color: '#94a3b8', fontFamily: 'DM Sans, sans-serif',
-                      fontSize: '12px', outline: 'none', cursor: 'pointer',
-                    }}
-                  >
-                    {['All', ...STATUS_CYCLE].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <button
-                    onClick={handleExport}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-                      background: 'transparent', border: '1px solid #1e2130',
-                      borderRadius: 8, padding: '7px 12px', color: '#94a3b8',
-                      fontFamily: 'DM Sans, sans-serif', fontSize: '12px', cursor: 'pointer',
-                    }}
-                  >
-                    <Download size={13} /> Export
-                  </button>
-                </div>
-              </div>
-
-              <FormSettings key={selectedForm.id} form={selectedForm} onUpdateForm={updateForm} />
-              <StatsRow submissions={submissions} mobile />
-
-              <div style={{ flex: 1, overflowY: 'auto' }}>
-                <MobileSubmissionsView
-                  form={selectedForm}
-                  submissions={submissions}
-                  search={search}
-                  statusFilter={statusFilter}
-                  onStatusUpdate={updateStatus}
-                  loading={subsLoading}
-                />
-              </div>
-            </>
+            forms.map(form => (
+              <MobileAccordionCard
+                key={form.id}
+                form={form}
+                expanded={mobileExpandedId === form.id}
+                onToggle={() => setMobileExpandedId(mobileExpandedId === form.id ? null : form.id)}
+                onCopyLink={handleCopyLink}
+                onDelete={setDeleteTarget}
+                onUpdateForm={updateForm}
+              />
+            ))
           )}
         </div>
 
