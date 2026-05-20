@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast'
 import QRCode from 'qrcode'
 import {
   Star, Upload, Link as LinkIcon, Share2, Copy,
-  CheckCircle, ChevronDown, ChevronUp, Lock, Eye, EyeOff,
+  CheckCircle, ChevronDown, ChevronUp, Lock, Eye, EyeOff, X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -75,20 +75,104 @@ function StarRatingField({ field, value, onChange }) {
 
 // ─── File Dropzone ────────────────────────────────────────────────────────────
 
-function FileDropzoneField({ field, value, onChange, error }) {
+function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
+  const [uploading, setUploading] = useState(false)
+
+  const fmtSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const onDrop = async (files) => {
+    const file = files[0]
+    if (!file) return
+    setUploading(true)
+    const filePath = `uploads/${formId}/${fieldId}/${Date.now()}-${file.name}`
+    const { error: uploadError } = await supabase.storage
+      .from('uploads')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false })
+    if (uploadError) {
+      toast.error('File upload failed. Please try again.')
+      setUploading(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filePath)
+    onChange({ url: urlData.publicUrl, name: file.name, size: file.size, type: file.type })
+    setUploading(false)
+  }
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     multiple: false,
-    onDrop: (files) => files[0] && onChange(files[0]),
+    onDrop,
+    disabled: uploading,
   })
 
+  // Success state
+  if (value?.url) {
+    return (
+      <div style={{
+        border: '2px dashed #10b981',
+        borderRadius: '8px', padding: '20px 24px',
+        display: 'flex', alignItems: 'center', gap: '12px',
+        background: 'rgba(16,185,129,0.04)',
+      }}>
+        <CheckCircle size={20} color="#10b981" style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+            color: '#f8fafc', margin: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {value.name}
+          </p>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+            {fmtSize(value.size)}
+          </p>
+        </div>
+        <button
+          onClick={() => onChange(null)}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
+          style={{
+            background: 'transparent', border: 'none', padding: '4px',
+            color: '#64748b', cursor: 'pointer', display: 'flex',
+            alignItems: 'center', borderRadius: '4px', transition: 'color 0.15s',
+          }}
+        >
+          <X size={14} />
+        </button>
+      </div>
+    )
+  }
+
+  // Uploading state
+  if (uploading) {
+    return (
+      <div style={{
+        border: '2px dashed #1e2130', borderRadius: '8px',
+        padding: '32px 24px', textAlign: 'center',
+      }}>
+        <span style={{
+          width: 28, height: 28,
+          border: '3px solid #1e2130', borderTopColor: '#00d4ff',
+          borderRadius: '50%', display: 'inline-block',
+          animation: 'spin 0.65s linear infinite', marginBottom: '12px',
+        }} />
+        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+          Uploading...
+        </p>
+      </div>
+    )
+  }
+
+  // Default dropzone
   return (
     <div
       {...getRootProps()}
       style={{
         border: `2px dashed ${isDragActive ? '#00d4ff' : error ? '#ef4444' : '#1e2130'}`,
-        borderRadius: '8px',
-        padding: '32px 24px',
-        textAlign: 'center',
+        borderRadius: '8px', padding: '32px 24px', textAlign: 'center',
         cursor: 'pointer',
         background: isDragActive ? 'rgba(0,212,255,0.04)' : 'transparent',
         transition: 'border-color 0.2s, background 0.2s',
@@ -97,18 +181,12 @@ function FileDropzoneField({ field, value, onChange, error }) {
       <input {...getInputProps()} />
       <Upload
         size={28}
-        color={isDragActive || value ? '#00d4ff' : '#64748b'}
+        color={isDragActive ? '#00d4ff' : '#64748b'}
         style={{ margin: '0 auto 12px', display: 'block' }}
       />
-      {value ? (
-        <p style={{ color: '#00d4ff', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
-          {value.name}
-        </p>
-      ) : (
-        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
-          Drop files here or click to upload
-        </p>
-      )}
+      <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+        Drop file here or click to upload
+      </p>
     </div>
   )
 }
@@ -153,7 +231,7 @@ function URLField({ field, value, onChange, onClearError, error }) {
 
 // ─── Field Renderer ───────────────────────────────────────────────────────────
 
-function FieldRenderer({ field, value, onChange, error, onClearError }) {
+function FieldRenderer({ field, value, onChange, error, onClearError, formId }) {
   const border = `1px solid ${error ? '#ef4444' : '#1e2130'}`
 
   const onFocus = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : '#00d4ff')
@@ -243,6 +321,8 @@ function FieldRenderer({ field, value, onChange, error, onClearError }) {
           value={value}
           onChange={(v) => { onChange(v); onClearError() }}
           error={error}
+          formId={formId}
+          fieldId={field.id}
         />
       )
 
@@ -770,16 +850,11 @@ export default function FormView() {
         return
       }
 
-      const serialized = {}
-      Object.entries(answers).forEach(([k, v]) => {
-        serialized[k] = v instanceof File ? v.name : v
-      })
-
       const { error } = await supabase
         .from('submissions')
         .insert({
           form_id:    form.id,
-          answers:    serialized,
+          answers:    answers,
           receipt_id: receipt,
           status:     'Open',
         })
@@ -926,6 +1001,7 @@ export default function FormView() {
                   onChange={(val) => setAnswer(field.id, val)}
                   error={errors.includes(field.id)}
                   onClearError={() => clearError(field.id)}
+                  formId={id}
                 />
 
                 {errors.includes(field.id) && (

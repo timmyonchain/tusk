@@ -126,6 +126,98 @@ function StatusBadge({ status, onClick }) {
   )
 }
 
+// ─── File Answer Renderer ─────────────────────────────────────────────────────
+
+function FileAnswerRenderer({ value }) {
+  if (!value || value === '—') {
+    return (
+      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#475569' }}>—</p>
+    )
+  }
+
+  // Old format: plain string filename (file no longer available)
+  if (typeof value === 'string') {
+    return (
+      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#64748b', margin: 0 }}>
+        {value}{' '}
+        <span style={{ color: '#334155', fontStyle: 'italic' }}>(file not available)</span>
+      </p>
+    )
+  }
+
+  // New format: { url, name, size, type }
+  const { url, name, type } = value
+  if (!url) {
+    return <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#475569' }}>—</p>
+  }
+
+  const ext = (name || '').split('.').pop().toLowerCase()
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || (type || '').startsWith('image/')
+  const isPDF   = ext === 'pdf' || type === 'application/pdf'
+  const isVideo = ['mp4', 'mov', 'webm'].includes(ext) || (type || '').startsWith('video/')
+
+  if (isImage) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block' }}>
+        <img
+          src={url}
+          alt={name}
+          style={{ maxHeight: 200, borderRadius: 8, cursor: 'pointer', display: 'block' }}
+        />
+      </a>
+    )
+  }
+
+  if (isPDF) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#00d4ff')}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(0,212,255,0.3)')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          border: '1px solid rgba(0,212,255,0.3)', borderRadius: 6,
+          padding: '6px 12px', color: '#00d4ff',
+          fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+          textDecoration: 'none', transition: 'border-color 0.15s',
+        }}
+      >
+        <FileText size={14} /> View PDF
+      </a>
+    )
+  }
+
+  if (isVideo) {
+    return (
+      <video
+        src={url}
+        controls
+        style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, display: 'block' }}
+      />
+    )
+  }
+
+  return (
+    <a
+      href={url}
+      download={name}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        border: '1px solid #1e2130', borderRadius: 6,
+        padding: '6px 12px', color: '#94a3b8',
+        fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+        textDecoration: 'none', transition: 'border-color 0.15s',
+      }}
+    >
+      <Download size={14} /> {name || 'Download File'}
+    </a>
+  )
+}
+
 // ─── Expanded Detail ──────────────────────────────────────────────────────────
 
 function ExpandedDetail({ sub, form, onCollapse }) {
@@ -157,12 +249,16 @@ function ExpandedDetail({ sub, form, onCollapse }) {
             }}>
               {field.label}
             </p>
-            <p style={{
-              fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-              color: '#e2e8f0', lineHeight: 1.5, wordBreak: 'break-word',
-            }}>
-              {fmtAnswer(sub.answers?.[field.id], field)}
-            </p>
+            {field.type === 'file-upload' ? (
+              <FileAnswerRenderer value={sub.answers?.[field.id]} />
+            ) : (
+              <p style={{
+                fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+                color: '#e2e8f0', lineHeight: 1.5, wordBreak: 'break-word',
+              }}>
+                {fmtAnswer(sub.answers?.[field.id], field)}
+              </p>
+            )}
           </div>
         ))}
       </div>
