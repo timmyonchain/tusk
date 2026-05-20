@@ -30,8 +30,17 @@ TUSK is a premium form builder and feedback platform. Live at https://www.tusk.i
   * forms (id uuid, user_id uuid, title text, fields jsonb, is_active boolean default true, max_submissions integer, is_private boolean default false, form_password text, created_at timestamptz)
   * submissions (id uuid, form_id uuid, answers jsonb, receipt_id text, status text default Open, submitted_at timestamptz)
 - RLS enabled on both tables
+- Storage: public bucket called "uploads" — RLS policies allow public read, authenticated write
 - Auth: email + password with email verification on signup
 - Supabase auth redirect URL set to https://www.tusk.ink
+
+## File Upload Details
+- Bucket: "uploads" (public) in Supabase Storage
+- Upload path: uploads/[formId]/[fieldId]/[timestamp]-[filename]
+- File answer stored in submissions.answers as: { url: string, name: string, size: number, type: string }
+- Old submissions (pre-upload feature) may have a plain string filename — dashboard handles both formats
+- Upload happens in FormView.jsx on file drop/select, before form submission
+- Dashboard renders file answers by type: images as thumbnails, PDFs as "View PDF" button, videos with controls, other files as download link
 
 ## File Structure
 src/
@@ -63,9 +72,12 @@ src/
 - Submission limits — form closes automatically when limit reached
 - Revoke links — admin can close/reopen form instantly
 - Receipt ID on every submission — unique UUID proof of submission
-- Admin dashboard: search, filter by status, CSV export, status management (Open/In Review/Resolved)
+- Admin dashboard: search, filter by status, status management (Open/In Review/Resolved)
 - Copy form link from dashboard
 - Delete form with confirmation modal (deletes form + all submissions)
+- Real file uploads via Supabase Storage — files upload on drop, public URL stored in submission, dashboard renders by type (image thumbnail, PDF button, video player, download link)
+- Premium export menu with three options: Export as CSV (improved format with title/date header rows, slug-dated filename), Export as PDF (browser print dialog with formatted report injected as hidden div), Copy Summary (decorated plain-text summary copied to clipboard)
+- Mobile dashboard accordion layout — each form is an expandable card, one open at a time, smooth max-height animation, expanded card contains search, filter, export menu, form settings, stats, and submission cards, collapse button at bottom, sticky New Form header at top
 - Full mobile responsive — builder uses tab layout (Fields/Canvas/Settings), dashboard uses accordion layout
 - Mobile hamburger menu with slide-in navigation
 - Email auth with Supabase — email verification on signup
@@ -80,8 +92,12 @@ src/
 - localStorage is NOT used for forms or submissions — everything is in Supabase
 - Form view is fully public — no auth required to submit
 - Builder and Dashboard require login
+- File uploads happen at drop time (not at submit time) — the public URL is in answers before the form is submitted
+- File answer format: { url, name, size, type } — always a plain JSON object in the answers column
+- Export menu is shared between desktop TopBar and mobile accordion cards via ExportMenu component
+- PDF export uses window.print() with an injected #tusk-print div — no external PDF library
 - On mobile, builder shows 3 tabs: Fields, Canvas, Settings
-- On mobile, dashboard shows accordion cards — one open at a time
+- On mobile, dashboard shows accordion cards — one open at a time, desktop layout completely unchanged
 - Navbar shows Sign In + Get Started when logged out, email + Sign Out when logged in
 - Password show/hide toggle on all password inputs
 
