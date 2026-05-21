@@ -140,7 +140,7 @@ const DEFAULT_BRAND_KIT = {
   button_radius:      8,
   header_style:       'minimal',
   theme_preset:       null,
-  show_tusk_branding: true,
+  show_tusk_branding: false,
   custom_footer_text: '',
 }
 
@@ -799,10 +799,16 @@ const FormPreview = memo(function FormPreview({ form, kit }) {
 
   return (
     <div style={{
-      flexGrow: 1, background: '#060609',
-      overflowY: 'auto', padding: '20px 24px 40px',
+      flexGrow: 1, minWidth: 0,
+      height: 'calc(100vh - 120px)',
+      background: '#060609',
+      overflowY: 'auto', overflowX: 'hidden',
+      padding: '20px 24px 40px',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
     }}>
+      {/* Sandbox — pointer-events:none prevents preview stealing clicks/scroll from left panel */}
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none', position: 'relative' }}>
+
       {/* Live preview badge */}
       <div style={{ width: '100%', maxWidth: 580, display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
         <span style={{
@@ -849,23 +855,15 @@ const FormPreview = memo(function FormPreview({ form, kit }) {
                 }}
               />
             )}
-            <h1 style={{ fontFamily: `${font}, sans-serif`, fontWeight: 700, fontSize: '1.4rem', color: text, marginBottom: 6 }}>
+            <h1 style={{ fontFamily: `${font}, sans-serif`, fontWeight: 700, fontSize: '1.4rem', color: text, marginBottom: 14 }}>
               {form.title || 'Untitled Form'}
             </h1>
-            <p style={{ fontFamily: `${font}, sans-serif`, fontSize: 12, color: mutedColor, marginBottom: 18 }}>
-              Powered by TUSK · Responses securely stored
-            </p>
             <div style={{ height: 1, background: primary, opacity: 0.25, marginBottom: 24 }} />
           </div>
         )}
 
         {/* Fields + submit */}
         <div style={{ padding: headerStyle === 'banner' ? '24px 32px 28px' : '0 32px 28px' }}>
-          {headerStyle === 'banner' && (
-            <p style={{ fontFamily: `${font}, sans-serif`, fontSize: 12, color: mutedColor, marginBottom: 20 }}>
-              Powered by TUSK · Responses securely stored
-            </p>
-          )}
 
           {fields.length === 0 ? (
             <p style={{ color: mutedColor, fontFamily: `${font}, sans-serif`, fontSize: 13, fontStyle: 'italic' }}>
@@ -897,14 +895,14 @@ const FormPreview = memo(function FormPreview({ form, kit }) {
             </button>
           )}
 
-          {(kit.custom_footer_text || kit.show_tusk_branding !== false) && (
+          {(kit.custom_footer_text || kit.show_tusk_branding === true) && (
             <div style={{ marginTop: 18, textAlign: 'center' }}>
               {kit.custom_footer_text && (
                 <p style={{ fontFamily: `${font}, sans-serif`, fontSize: 11, color: mutedColor, marginBottom: 3 }}>
                   {kit.custom_footer_text}
                 </p>
               )}
-              {kit.show_tusk_branding !== false && (
+              {kit.show_tusk_branding === true && (
                 <p style={{ fontFamily: `${font}, sans-serif`, fontSize: 10, color: mutedColor, letterSpacing: '0.05em', opacity: 0.7 }}>
                   Built with TUSK
                 </p>
@@ -913,25 +911,9 @@ const FormPreview = memo(function FormPreview({ form, kit }) {
           )}
         </div>
       </div>
+      </div>{/* /sandbox */}
     </div>
   )
-}
-
-, (prev, next) => {
-  if (prev.form.title !== next.form.title) return false
-  if (prev.form.fields.length !== next.form.fields.length) return false
-  if (prev.form.fields !== next.form.fields) return false
-  const pk = prev.kit, nk = next.kit
-  return pk.primary_color === nk.primary_color &&
-    pk.background_color === nk.background_color &&
-    pk.surface_color === nk.surface_color &&
-    pk.text_color === nk.text_color &&
-    pk.font_family === nk.font_family &&
-    pk.button_radius === nk.button_radius &&
-    pk.header_style === nk.header_style &&
-    pk.logo_url === nk.logo_url &&
-    pk.show_tusk_branding === nk.show_tusk_branding &&
-    pk.custom_footer_text === nk.custom_footer_text
 })
 
 // ─── Brand kit panel ──────────────────────────────────────────────────────────
@@ -966,9 +948,11 @@ function BrandKitPanel({ kit, onChange, formId, publishedFormId, onSave, saving,
     <aside style={{
       width: mobile ? '100%' : 380,
       flexShrink: mobile ? undefined : 0,
+      height: mobile ? undefined : 'calc(100vh - 120px)',
       background: '#0f1117',
       borderRight: mobile ? 'none' : '1px solid #1e2130',
       overflowY: mobile ? 'visible' : 'auto',
+      overflowX: 'hidden',
       display: 'flex', flexDirection: 'column',
     }}>
       <div style={{ padding: '20px', flex: 1 }}>
@@ -1206,7 +1190,7 @@ function BrandKitPanel({ kit, onChange, formId, publishedFormId, onSave, saving,
 
 // ─── Publish Modal ────────────────────────────────────────────────────────────
 
-function PublishModal({ formTitle, fields, user, onClose, onReset, onPublished }) {
+function PublishModal({ formTitle, fields, brandKit, user, onClose, onReset, onPublished }) {
   const [isPrivate, setIsPrivate]     = useState(false)
   const [password, setPassword]       = useState('')
   const [confirm, setConfirm]         = useState('')
@@ -1230,6 +1214,7 @@ function PublishModal({ formTitle, fields, user, onClose, onReset, onPublished }
         user_id:       user.id,
         title:         formTitle || 'Untitled Form',
         fields,
+        brand_kit:     brandKit || null,
         is_private:    isPrivate,
         form_password: isPrivate ? password : null,
       })
@@ -1313,7 +1298,7 @@ function PublishModal({ formTitle, fields, user, onClose, onReset, onPublished }
               View Form →
             </button>
             <button
-              onClick={onReset}
+              onClick={onClose}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
               onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
               style={outlineBtn}
@@ -1499,17 +1484,24 @@ export default function Builder() {
   }
 
   const saveKit = async () => {
-    if (!publishedFormId) return
+    if (!publishedFormId) { toast.error('Please publish your form first'); return }
+    console.log('[saveKit] publishedFormId:', publishedFormId)
+    console.log('[saveKit] brandKit:', brandKit)
     setSavingKit(true)
     const { error } = await supabase.from('forms').update({ brand_kit: brandKit }).eq('id', publishedFormId)
     setSavingKit(false)
     if (error) { toast.error('Failed to save brand kit'); return }
-    toast.success('Brand kit saved!')
+    toast.success('Brand kit saved successfully')
   }
 
   const preview = () => {
-    localStorage.setItem('tusk_preview', JSON.stringify({ title: formTitle, fields }))
-    window.open('/form/preview', '_blank')
+    if (publishedFormId) {
+      localStorage.setItem(`tusk_preview_brand_kit_${publishedFormId}`, JSON.stringify(brandKit))
+      window.open(`/form/${publishedFormId}`, '_blank')
+    } else {
+      localStorage.setItem('tusk_preview', JSON.stringify({ title: formTitle, fields, brand_kit: brandKit }))
+      window.open('/form/preview', '_blank')
+    }
   }
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
@@ -1659,6 +1651,7 @@ export default function Builder() {
           <PublishModal
             formTitle={formTitle}
             fields={fields}
+            brandKit={brandKit}
             user={user}
             onClose={() => setShowPublishModal(false)}
             onReset={resetBuilder}
@@ -1823,6 +1816,7 @@ export default function Builder() {
         <PublishModal
           formTitle={formTitle}
           fields={fields}
+          brandKit={brandKit}
           user={user}
           onClose={() => setShowPublishModal(false)}
           onReset={resetBuilder}

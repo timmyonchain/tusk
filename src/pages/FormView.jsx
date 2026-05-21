@@ -31,20 +31,22 @@ function loadFont(name) {
   document.head.appendChild(link)
 }
 
-// ─── Shared input style (uses CSS vars — falls back to defaults when no brand kit) ─
+// ─── Shared input style factory ──────────────────────────────────────────────
 
-const INPUT = {
-  width: '100%',
-  background: "var(--brand-surface, #0f1117)",
-  borderRadius: '8px',
-  color: "var(--brand-text, #f8fafc)",
-  fontFamily: "var(--brand-font, 'DM Sans'), sans-serif",
-  fontSize: '14px',
-  padding: '12px 16px',
-  outline: 'none',
-  boxSizing: 'border-box',
-  display: 'block',
-  transition: 'border-color 0.15s',
+function INPUT(surface = '#0f1117', text = '#f8fafc', font = 'DM Sans, sans-serif') {
+  return {
+    width: '100%',
+    background: surface,
+    borderRadius: '8px',
+    color: text,
+    fontFamily: font,
+    fontSize: '14px',
+    padding: '12px 16px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    display: 'block',
+    transition: 'border-color 0.15s',
+  }
 }
 
 // ─── QR Code canvas ───────────────────────────────────────────────────────────
@@ -96,7 +98,7 @@ function StarRatingField({ field, value, onChange, primaryColor = '#00d4ff' }) {
 
 // ─── File Dropzone ────────────────────────────────────────────────────────────
 
-function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
+function FileDropzoneField({ field, value, onChange, error, formId, fieldId, primaryColor = '#00d4ff', bodyFont = 'DM Sans, sans-serif' }) {
   const [uploading, setUploading] = useState(false)
 
   const fmtSize = (bytes) => {
@@ -141,13 +143,13 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
         <CheckCircle size={20} color="#10b981" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
-            fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '14px',
-            color: "var(--brand-text, #f8fafc)", margin: 0,
+            fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+            color: '#f8fafc', margin: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {value.name}
           </p>
-          <p style={{ fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
             {fmtSize(value.size)}
           </p>
         </div>
@@ -176,11 +178,11 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
       }}>
         <span style={{
           width: 28, height: 28,
-          border: '3px solid #1e2130', borderTopColor: 'var(--brand-primary, #00d4ff)',
+          border: '3px solid #1e2130', borderTopColor: primaryColor,
           borderRadius: '50%', display: 'inline-block',
           animation: 'spin 0.65s linear infinite', marginBottom: '12px',
         }} />
-        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", margin: 0 }}>
+        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: bodyFont, margin: 0 }}>
           Uploading...
         </p>
       </div>
@@ -192,7 +194,7 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
     <div
       {...getRootProps()}
       style={{
-        border: `2px dashed ${isDragActive ? 'var(--brand-primary, #00d4ff)' : error ? '#ef4444' : '#1e2130'}`,
+        border: `2px dashed ${isDragActive ? primaryColor : error ? '#ef4444' : '#1e2130'}`,
         borderRadius: '8px', padding: '32px 24px', textAlign: 'center',
         cursor: 'pointer',
         background: isDragActive ? 'rgba(0,212,255,0.04)' : 'transparent',
@@ -202,10 +204,10 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
       <input {...getInputProps()} />
       <Upload
         size={28}
-        color={isDragActive ? 'var(--brand-primary, #00d4ff)' : '#64748b'}
+        color={isDragActive ? primaryColor : '#64748b'}
         style={{ margin: '0 auto 12px', display: 'block' }}
       />
-      <p style={{ color: '#64748b', fontSize: '14px', fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", margin: 0 }}>
+      <p style={{ color: '#64748b', fontSize: '14px', fontFamily: bodyFont, margin: 0 }}>
         Drop file here or click to upload
       </p>
     </div>
@@ -214,14 +216,14 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
 
 // ─── URL Field ────────────────────────────────────────────────────────────────
 
-function URLField({ field, value, onChange, onClearError, error }) {
+function URLField({ field, value, onChange, onClearError, error, surfaceColor = '#0f1117', textColor = '#f8fafc', primaryColor = '#00d4ff', bodyFont = 'DM Sans, sans-serif' }) {
   const [focused, setFocused] = useState(false)
 
   return (
     <div style={{
       display: 'flex',
-      background: "var(--brand-surface, #0f1117)",
-      border: `1px solid ${error ? '#ef4444' : focused ? 'var(--brand-primary, #00d4ff)' : '#1e2130'}`,
+      background: surfaceColor,
+      border: `1px solid ${error ? '#ef4444' : focused ? primaryColor : '#1e2130'}`,
       borderRadius: '8px',
       overflow: 'hidden',
       transition: 'border-color 0.15s',
@@ -242,8 +244,8 @@ function URLField({ field, value, onChange, onClearError, error }) {
         onChange={(e) => { onChange(e.target.value); onClearError() }}
         style={{
           flex: 1, background: 'transparent', border: 'none', outline: 'none',
-          padding: '12px 16px', color: "var(--brand-text, #f8fafc)",
-          fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '14px',
+          padding: '12px 16px', color: textColor,
+          fontFamily: bodyFont, fontSize: '14px',
         }}
       />
     </div>
@@ -252,10 +254,11 @@ function URLField({ field, value, onChange, onClearError, error }) {
 
 // ─── Field Renderer ───────────────────────────────────────────────────────────
 
-function FieldRenderer({ field, value, onChange, error, onClearError, formId, primaryColor = '#00d4ff' }) {
-  const border = `1px solid ${error ? '#ef4444' : '#1e2130'}`
+function FieldRenderer({ field, value, onChange, error, onClearError, formId, primaryColor = '#00d4ff', surfaceColor = '#0f1117', textColor = '#f8fafc', bodyFont = 'DM Sans, sans-serif' }) {
+  const border  = `1px solid ${error ? '#ef4444' : '#1e2130'}`
+  const inputStyle = INPUT(surfaceColor, textColor, bodyFont)
 
-  const onFocus = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : 'var(--brand-primary, #00d4ff)')
+  const onFocus = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : primaryColor)
   const onBlur  = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : '#1e2130')
 
   switch (field.type) {
@@ -267,7 +270,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
           placeholder={field.placeholder || ''}
           onFocus={onFocus} onBlur={onBlur}
           onChange={(e) => { onChange(e.target.value); onClearError() }}
-          style={{ ...INPUT, border }}
+          style={{ ...inputStyle, border }}
         />
       )
 
@@ -279,7 +282,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
           placeholder={field.placeholder || ''}
           onFocus={onFocus} onBlur={onBlur}
           onChange={(e) => { onChange(e.target.value); onClearError() }}
-          style={{ ...INPUT, border, resize: 'vertical' }}
+          style={{ ...inputStyle, border, resize: 'vertical' }}
         />
       )
 
@@ -289,7 +292,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
           value={value || ''}
           onFocus={onFocus} onBlur={onBlur}
           onChange={(e) => { onChange(e.target.value); onClearError() }}
-          style={{ ...INPUT, border, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}
+          style={{ ...inputStyle, border, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' }}
         >
           <option value="" disabled>Select an option…</option>
           {field.options.map((opt, i) => (
@@ -316,7 +319,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
                 }}
                 style={{ accentColor: primaryColor, width: 16, height: 16, cursor: 'pointer' }}
               />
-              <span style={{ fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '14px', color: "var(--brand-text, #f8fafc)" }}>
+              <span style={{ fontFamily: bodyFont, fontSize: '14px', color: textColor }}>
                 {opt}
               </span>
             </label>
@@ -344,6 +347,8 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
           error={error}
           formId={formId}
           fieldId={field.id}
+          primaryColor={primaryColor}
+          bodyFont={bodyFont}
         />
       )
 
@@ -355,6 +360,10 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
           onChange={onChange}
           onClearError={onClearError}
           error={error}
+          surfaceColor={surfaceColor}
+          textColor={textColor}
+          primaryColor={primaryColor}
+          bodyFont={bodyFont}
         />
       )
 
@@ -366,7 +375,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId, pr
           placeholder={field.placeholder || '0'}
           onFocus={onFocus} onBlur={onBlur}
           onChange={(e) => { onChange(e.target.value); onClearError() }}
-          style={{ ...INPUT, border }}
+          style={{ ...inputStyle, border }}
         />
       )
 
@@ -391,7 +400,7 @@ function ShareBar({ url }) {
   return (
     <div style={{
       marginBottom: '40px',
-      background: "var(--brand-surface, #0f1117)",
+      background: '#0f1117',
       border: '1px solid #1e2130',
       borderRadius: '10px',
       overflow: 'hidden',
@@ -406,7 +415,7 @@ function ShareBar({ url }) {
         }}
       >
         <Share2 size={14} color="#64748b" />
-        <span style={{ fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '13px', color: '#64748b' }}>
+        <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#64748b' }}>
           Share this form
         </span>
         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -427,7 +436,7 @@ function ShareBar({ url }) {
                 flex: 1, background: '#0a0a0f',
                 border: '1px solid #1e2130', borderRadius: '6px',
                 padding: '8px 12px', color: '#94a3b8',
-                fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '12px',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
                 outline: 'none',
               }}
             />
@@ -438,7 +447,7 @@ function ShareBar({ url }) {
                 border: `1px solid ${copied ? '#00d4ff' : '#1e2130'}`,
                 borderRadius: '6px', padding: '8px 14px',
                 color: copied ? '#00d4ff' : '#64748b',
-                fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '12px',
+                fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
                 cursor: 'pointer', whiteSpace: 'nowrap',
                 transition: 'all 0.15s',
                 width: isMobile ? '100%' : undefined,
@@ -706,7 +715,18 @@ export default function FormView() {
         if (count >= data.max_submissions) { setForm(data); setLimitReached(true); setLoading(false); return }
       }
 
-      setForm(data)
+      const previewKit = localStorage.getItem(`tusk_preview_brand_kit_${id}`)
+      let formData = data
+      if (previewKit) {
+        try {
+          const parsedKit = JSON.parse(previewKit)
+          console.log('[FormView] preview brand_kit override applied:', parsedKit)
+          formData = { ...data, brand_kit: parsedKit }
+          localStorage.removeItem(`tusk_preview_brand_kit_${id}`)
+        } catch {}
+      }
+      console.log('[FormView] brand_kit loaded:', formData.brand_kit)
+      setForm(formData)
       setLoading(false)
     }
 
@@ -811,29 +831,23 @@ export default function FormView() {
   }
 
   // ── Brand kit values (computed after early returns — not hooks) ─────────────
-  const kit          = form?.brand_kit || null
+  const rawKit = form?.brand_kit
+  const kit    = rawKit && typeof rawKit === 'object' && Object.keys(rawKit).length > 0 ? rawKit : null
   const primaryColor = kit?.primary_color    || '#00d4ff'
-  const bgColor      = kit?.background_color || undefined
   const fontFamily   = kit?.font_family      || 'DM Sans'
   const radius       = kit?.button_radius    ?? 8
   const btnTextColor = isLight(primaryColor) ? '#0a0a0f' : '#f8fafc'
   const headingFont  = kit ? `${fontFamily}, sans-serif` : 'Syne, sans-serif'
   const bodyFont     = kit ? `${fontFamily}, sans-serif` : 'DM Sans, sans-serif'
+  const bgColor      = kit?.background_color || '#0a0a0f'
+  const surfaceColor = kit?.surface_color    || '#0f1117'
+  const textColor    = kit?.text_color       || '#f8fafc'
 
-  const kitVars = kit ? {
-    '--brand-primary': primaryColor,
-    '--brand-bg':      kit.background_color || '#0a0a0f',
-    '--brand-surface': kit.surface_color    || '#0f1117',
-    '--brand-text':    kit.text_color       || '#f8fafc',
-    '--brand-font':    fontFamily,
-    '--brand-radius':  `${radius}px`,
-  } : {}
-
-  const showBranding = kit?.show_tusk_branding !== false
+  const showBranding = kit?.show_tusk_branding === true
 
   // ── Form ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: 'calc(100vh - 64px)', background: bgColor, ...kitVars }}>
+    <div style={{ minHeight: 'calc(100vh - 64px)', backgroundColor: bgColor, color: textColor, fontFamily: bodyFont }}>
 
       {/* Full-width banner header */}
       {kit?.header_style === 'banner' && !submitted && (
@@ -851,15 +865,14 @@ export default function FormView() {
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: isMobile ? '32px 16px 60px' : '60px 24px 80px' }}>
 
-        {/* Header — minimal and centered styles */}
+        {/* Header — single block covers minimal, centered, and no-kit; banner title is above */}
         {!submitted && kit?.header_style !== 'banner' && (
           <div style={{ marginBottom: '40px', textAlign: kit?.header_style === 'centered' ? 'center' : 'left' }}>
             {kit?.logo_url && (
               <img
                 src={kit.logo_url} alt="Logo"
                 style={{
-                  height: 40, objectFit: 'contain',
-                  display: 'block',
+                  height: 40, objectFit: 'contain', display: 'block',
                   margin: kit?.header_style === 'centered' ? '0 auto 20px' : '0 0 16px',
                 }}
               />
@@ -867,53 +880,18 @@ export default function FormView() {
             <h1 style={{
               fontFamily: headingFont, fontWeight: 700,
               fontSize: isMobile ? '1.5rem' : '2rem',
-              color: 'var(--brand-text, #f8fafc)', marginBottom: '10px',
+              color: textColor, marginBottom: '14px',
             }}>
               {form.title || 'Untitled Form'}
             </h1>
-            {showBranding && (
-              <p style={{
-                fontFamily: bodyFont, fontSize: '13px',
-                color: 'var(--brand-text, #475569)', opacity: 0.5,
-                marginBottom: '20px',
-                display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
-                justifyContent: kit?.header_style === 'centered' ? 'center' : 'flex-start',
-              }}>
-                Powered by TUSK
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: primaryColor, display: 'inline-block', flexShrink: 0 }} />
-                Responses securely stored
-              </p>
-            )}
             <div style={{ height: 1, background: primaryColor, opacity: 0.3 }} />
           </div>
         )}
 
-        {/* After banner: subtitle + divider */}
+        {/* After banner: divider only */}
         {!submitted && kit?.header_style === 'banner' && (
           <div style={{ marginBottom: '32px' }}>
-            {showBranding && (
-              <p style={{ fontFamily: bodyFont, fontSize: '13px', color: 'var(--brand-text, #475569)', opacity: 0.45, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                Powered by TUSK
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: primaryColor, display: 'inline-block', flexShrink: 0 }} />
-                Responses securely stored
-              </p>
-            )}
             <div style={{ height: 1, background: primaryColor, opacity: 0.3 }} />
-          </div>
-        )}
-
-        {/* Default header — no brand kit */}
-        {!submitted && !kit && (
-          <div style={{ marginBottom: '40px' }}>
-            <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: isMobile ? '1.5rem' : '2rem', color: '#f8fafc', marginBottom: '10px' }}>
-              {form.title || 'Untitled Form'}
-            </h1>
-            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#475569', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              Powered by TUSK
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00d4ff', display: 'inline-block', flexShrink: 0 }} />
-              Responses securely stored
-            </p>
-            <div style={{ height: 1, background: 'rgba(0,212,255,0.3)' }} />
           </div>
         )}
 
@@ -930,7 +908,7 @@ export default function FormView() {
                   display: 'block',
                   fontFamily: bodyFont,
                   fontSize: '15px', fontWeight: 500,
-                  color: 'var(--brand-text, #f8fafc)', marginBottom: '10px',
+                  color: textColor, marginBottom: '10px',
                 }}>
                   {field.label}
                   {field.required && (
@@ -946,6 +924,9 @@ export default function FormView() {
                   onClearError={() => clearError(field.id)}
                   formId={id}
                   primaryColor={primaryColor}
+                  surfaceColor={surfaceColor}
+                  textColor={textColor}
+                  bodyFont={bodyFont}
                 />
 
                 {errors.includes(field.id) && (
@@ -991,22 +972,25 @@ export default function FormView() {
               )}
             </button>
 
-            {/* Brand footer */}
-            {kit && (kit.custom_footer_text || showBranding) && (
-              <div style={{ marginTop: 48, textAlign: 'center' }}>
-                {kit.custom_footer_text && (
-                  <p style={{ fontFamily: bodyFont, fontSize: 12, color: 'var(--brand-text, #64748b)', opacity: 0.5, marginBottom: 4 }}>
-                    {kit.custom_footer_text}
-                  </p>
-                )}
-                {showBranding && (
-                  <p style={{ fontFamily: bodyFont, fontSize: 11, color: 'var(--brand-text, #64748b)', opacity: 0.3, letterSpacing: '0.05em' }}>
-                    Built with TUSK
-                  </p>
-                )}
-              </div>
-            )}
           </>
+        )}
+
+        {/* Footer — only for brand-kitted forms */}
+        {kit && (
+          <div style={{ textAlign: 'center' }}>
+            {showBranding ? (
+              <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#475569', margin: 0, padding: '24px 0' }}>
+                Built with{' '}
+                <a href="https://www.tusk.ink" target="_blank" rel="noopener noreferrer" style={{ color: '#475569', textDecoration: 'underline' }}>
+                  TUSK
+                </a>
+              </p>
+            ) : kit.custom_footer_text ? (
+              <p style={{ fontFamily: bodyFont, fontSize: 12, color: '#475569', opacity: 0.6, margin: 0, padding: '24px 0' }}>
+                {kit.custom_footer_text}
+              </p>
+            ) : null}
+          </div>
         )}
       </div>
     </div>
