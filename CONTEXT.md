@@ -79,6 +79,7 @@ src/
 - Premium export menu with three options: Export as CSV (improved format with title/date header rows, slug-dated filename), Export as PDF (browser print dialog with formatted report injected as hidden div), Copy Summary (decorated plain-text summary copied to clipboard)
 - Mobile dashboard accordion layout — each form is an expandable card, one open at a time, smooth max-height animation, expanded card contains search, filter, export menu, form settings, stats, and submission cards, collapse button at bottom, sticky New Form header at top
 - Full mobile responsive — builder uses tab layout (Fields/Canvas/Settings), dashboard uses accordion layout
+- Brand kit: full form customization system — themes, logo, colors, fonts, button radius, header styles, footer branding
 - Mobile hamburger menu with slide-in navigation
 - Email auth with Supabase — email verification on signup
 - Supabase RLS policies for security
@@ -100,6 +101,24 @@ src/
 - On mobile, dashboard shows accordion cards — one open at a time, desktop layout completely unchanged
 - Navbar shows Sign In + Get Started when logged out, email + Sign Out when logged in
 - Password show/hide toggle on all password inputs
+
+## Brand Kit
+
+- Database column: `brand_kit` JSONB on `forms` table
+- Schema: `{ logo_url, primary_color, background_color, surface_color, text_color, font_family, button_radius, header_style, theme_preset, show_tusk_branding, custom_footer_text }`
+- Builder: 4th tab "Customize" (desktop: 380px left panel + live FormPreview; mobile: full-screen panel in Customize tab)
+- Customize tab only appears when form has content (fields or title)
+- 7 control sections: Quick Themes (6 presets), Logo (upload to `logos/[formId]/logo.[ext]`), Colors (4 pickers), Typography (8 Google Fonts), Button Style (radius slider), Header Style (minimal/banner/centered), Footer (branding toggle + custom text)
+- Live preview updates instantly; Save button writes to Supabase — only enabled after form is published
+- Logo upload requires publishedFormId (form must be published first)
+- Font loading: dynamic Google Fonts `<link>` injected on demand via `loadFont(name)` — DM Sans and Syne are already loaded globally
+- FormView: applies brand kit via CSS custom properties (`--brand-primary`, `--brand-bg`, `--brand-surface`, `--brand-text`, `--brand-font`, `--brand-radius`) set on outer div
+- Header styles: `minimal` (title above, current default look), `banner` (full-width colored strip at top, title inside), `centered` (logo + centered title)
+- Logo shown in header (above title for minimal/centered, banner for banner style)
+- Submit button uses brand primary color + auto-computed text color (isLight check)
+- Footer: custom text + optional "Built with TUSK" tagline
+- `isLight(hex)` helper: luminance check to determine button text contrast (dark or light)
+- When no brand kit set, FormView falls back to all existing default styles
 
 ## Roadmap (not built yet)
 - Conditional logic (show/hide fields based on answers)

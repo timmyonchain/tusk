@@ -10,14 +10,35 @@ import {
 import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../hooks/useIsMobile'
 
-// ─── Shared input style ───────────────────────────────────────────────────────
+// ─── Brand kit helpers ────────────────────────────────────────────────────────
+
+function isLight(hex) {
+  if (!hex || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5
+}
+
+function loadFont(name) {
+  if (!name || name === 'DM Sans' || name === 'Syne') return
+  const id = `gfont-${name.toLowerCase().replace(/\s+/g, '-')}`
+  if (document.getElementById(id)) return
+  const link = document.createElement('link')
+  link.id = id
+  link.rel = 'stylesheet'
+  link.href = `https://fonts.googleapis.com/css2?family=${name.replace(/\s+/g, '+')}:wght@400;500;700&display=swap`
+  document.head.appendChild(link)
+}
+
+// ─── Shared input style (uses CSS vars — falls back to defaults when no brand kit) ─
 
 const INPUT = {
   width: '100%',
-  background: '#0f1117',
+  background: "var(--brand-surface, #0f1117)",
   borderRadius: '8px',
-  color: '#f8fafc',
-  fontFamily: 'DM Sans, sans-serif',
+  color: "var(--brand-text, #f8fafc)",
+  fontFamily: "var(--brand-font, 'DM Sans'), sans-serif",
   fontSize: '14px',
   padding: '12px 16px',
   outline: 'none',
@@ -47,7 +68,7 @@ function QRCodeCanvas({ url }) {
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
 
-function StarRatingField({ field, value, onChange }) {
+function StarRatingField({ field, value, onChange, primaryColor = '#00d4ff' }) {
   const [hovered, setHovered] = useState(0)
   const count = field.maxStars || 5
 
@@ -60,8 +81,8 @@ function StarRatingField({ field, value, onChange }) {
           <Star
             key={i}
             size={32}
-            color={active ? '#00d4ff' : '#475569'}
-            fill={active ? '#00d4ff' : '#1e2130'}
+            color={active ? primaryColor : '#475569'}
+            fill={active ? primaryColor : '#1e2130'}
             style={{ cursor: 'pointer', transition: 'color 0.1s, fill 0.1s' }}
             onMouseEnter={() => setHovered(n)}
             onMouseLeave={() => setHovered(0)}
@@ -120,13 +141,13 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
         <CheckCircle size={20} color="#10b981" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
-            fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-            color: '#f8fafc', margin: 0,
+            fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '14px',
+            color: "var(--brand-text, #f8fafc)", margin: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {value.name}
           </p>
-          <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+          <p style={{ fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
             {fmtSize(value.size)}
           </p>
         </div>
@@ -155,11 +176,11 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
       }}>
         <span style={{
           width: 28, height: 28,
-          border: '3px solid #1e2130', borderTopColor: '#00d4ff',
+          border: '3px solid #1e2130', borderTopColor: 'var(--brand-primary, #00d4ff)',
           borderRadius: '50%', display: 'inline-block',
           animation: 'spin 0.65s linear infinite', marginBottom: '12px',
         }} />
-        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+        <p style={{ color: '#64748b', fontSize: '14px', fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", margin: 0 }}>
           Uploading...
         </p>
       </div>
@@ -171,7 +192,7 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
     <div
       {...getRootProps()}
       style={{
-        border: `2px dashed ${isDragActive ? '#00d4ff' : error ? '#ef4444' : '#1e2130'}`,
+        border: `2px dashed ${isDragActive ? 'var(--brand-primary, #00d4ff)' : error ? '#ef4444' : '#1e2130'}`,
         borderRadius: '8px', padding: '32px 24px', textAlign: 'center',
         cursor: 'pointer',
         background: isDragActive ? 'rgba(0,212,255,0.04)' : 'transparent',
@@ -181,10 +202,10 @@ function FileDropzoneField({ field, value, onChange, error, formId, fieldId }) {
       <input {...getInputProps()} />
       <Upload
         size={28}
-        color={isDragActive ? '#00d4ff' : '#64748b'}
+        color={isDragActive ? 'var(--brand-primary, #00d4ff)' : '#64748b'}
         style={{ margin: '0 auto 12px', display: 'block' }}
       />
-      <p style={{ color: '#64748b', fontSize: '14px', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
+      <p style={{ color: '#64748b', fontSize: '14px', fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", margin: 0 }}>
         Drop file here or click to upload
       </p>
     </div>
@@ -199,8 +220,8 @@ function URLField({ field, value, onChange, onClearError, error }) {
   return (
     <div style={{
       display: 'flex',
-      background: '#0f1117',
-      border: `1px solid ${error ? '#ef4444' : focused ? '#00d4ff' : '#1e2130'}`,
+      background: "var(--brand-surface, #0f1117)",
+      border: `1px solid ${error ? '#ef4444' : focused ? 'var(--brand-primary, #00d4ff)' : '#1e2130'}`,
       borderRadius: '8px',
       overflow: 'hidden',
       transition: 'border-color 0.15s',
@@ -221,8 +242,8 @@ function URLField({ field, value, onChange, onClearError, error }) {
         onChange={(e) => { onChange(e.target.value); onClearError() }}
         style={{
           flex: 1, background: 'transparent', border: 'none', outline: 'none',
-          padding: '12px 16px', color: '#f8fafc',
-          fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
+          padding: '12px 16px', color: "var(--brand-text, #f8fafc)",
+          fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '14px',
         }}
       />
     </div>
@@ -231,10 +252,10 @@ function URLField({ field, value, onChange, onClearError, error }) {
 
 // ─── Field Renderer ───────────────────────────────────────────────────────────
 
-function FieldRenderer({ field, value, onChange, error, onClearError, formId }) {
+function FieldRenderer({ field, value, onChange, error, onClearError, formId, primaryColor = '#00d4ff' }) {
   const border = `1px solid ${error ? '#ef4444' : '#1e2130'}`
 
-  const onFocus = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : '#00d4ff')
+  const onFocus = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : 'var(--brand-primary, #00d4ff)')
   const onBlur  = (e) => (e.currentTarget.style.borderColor = error ? '#ef4444' : '#1e2130')
 
   switch (field.type) {
@@ -293,9 +314,9 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId }) 
                   onChange(next)
                   onClearError()
                 }}
-                style={{ accentColor: '#00d4ff', width: 16, height: 16, cursor: 'pointer' }}
+                style={{ accentColor: primaryColor, width: 16, height: 16, cursor: 'pointer' }}
               />
-              <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#f8fafc' }}>
+              <span style={{ fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '14px', color: "var(--brand-text, #f8fafc)" }}>
                 {opt}
               </span>
             </label>
@@ -310,7 +331,7 @@ function FieldRenderer({ field, value, onChange, error, onClearError, formId }) 
           field={field}
           value={value}
           onChange={(v) => { onChange(v); onClearError() }}
-          error={error}
+          primaryColor={primaryColor}
         />
       )
 
@@ -370,7 +391,7 @@ function ShareBar({ url }) {
   return (
     <div style={{
       marginBottom: '40px',
-      background: '#0f1117',
+      background: "var(--brand-surface, #0f1117)",
       border: '1px solid #1e2130',
       borderRadius: '10px',
       overflow: 'hidden',
@@ -385,7 +406,7 @@ function ShareBar({ url }) {
         }}
       >
         <Share2 size={14} color="#64748b" />
-        <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#64748b' }}>
+        <span style={{ fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '13px', color: '#64748b' }}>
           Share this form
         </span>
         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -406,7 +427,7 @@ function ShareBar({ url }) {
                 flex: 1, background: '#0a0a0f',
                 border: '1px solid #1e2130', borderRadius: '6px',
                 padding: '8px 12px', color: '#94a3b8',
-                fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '12px',
                 outline: 'none',
               }}
             />
@@ -417,7 +438,7 @@ function ShareBar({ url }) {
                 border: `1px solid ${copied ? '#00d4ff' : '#1e2130'}`,
                 borderRadius: '6px', padding: '8px 14px',
                 color: copied ? '#00d4ff' : '#64748b',
-                fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
+                fontFamily: "var(--brand-font, 'DM Sans'), sans-serif", fontSize: '12px',
                 cursor: 'pointer', whiteSpace: 'nowrap',
                 transition: 'all 0.15s',
                 width: isMobile ? '100%' : undefined,
@@ -455,41 +476,22 @@ function BlobReceipt({ receiptId, timestamp }) {
       marginTop: '32px',
       textAlign: 'left',
     }}>
-      {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
         <CheckCircle size={14} color="#00d4ff" />
-        <span style={{
-          fontFamily: 'DM Sans, sans-serif', fontSize: '11px', fontWeight: 600,
-          color: '#00d4ff', letterSpacing: '0.15em', textTransform: 'uppercase',
-        }}>
+        <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', fontWeight: 600, color: '#00d4ff', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
           Submission Receipt
         </span>
-        <span style={{
-          marginLeft: 'auto',
-          background: 'rgba(0,212,255,0.1)', color: '#00d4ff',
-          fontSize: '10px', padding: '2px 10px', borderRadius: '999px',
-          fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
-        }}>
+        <span style={{ marginLeft: 'auto', background: 'rgba(0,212,255,0.1)', color: '#00d4ff', fontSize: '10px', padding: '2px 10px', borderRadius: '999px', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
           Stored
         </span>
       </div>
 
-      {/* Receipt ID row */}
       <div style={{ marginBottom: '20px' }}>
-        <p style={{
-          fontFamily: 'DM Sans, sans-serif', fontSize: '11px',
-          color: '#64748b', marginBottom: '6px',
-        }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>
           Receipt ID
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <code style={{
-            fontFamily: 'monospace', fontSize: '12px',
-            color: '#00d4ff', flex: 1, minWidth: 0,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            background: 'rgba(0,212,255,0.06)', padding: '6px 10px', borderRadius: '6px',
-            display: 'block',
-          }}>
+          <code style={{ fontFamily: 'monospace', fontSize: '12px', color: '#00d4ff', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'rgba(0,212,255,0.06)', padding: '6px 10px', borderRadius: '6px', display: 'block' }}>
             {receiptId}
           </code>
           <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -497,22 +499,12 @@ function BlobReceipt({ receiptId, timestamp }) {
               onClick={copyReceiptId}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#00d4ff')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
-              style={{
-                background: 'transparent', border: 'none',
-                padding: '6px', color: '#64748b', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', transition: 'color 0.15s',
-              }}
+              style={{ background: 'transparent', border: 'none', padding: '6px', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
             >
               <Copy size={14} />
             </button>
             {copied && (
-              <div style={{
-                position: 'absolute', bottom: '100%', left: '50%',
-                transform: 'translateX(-50%)', marginBottom: '4px',
-                background: '#1e2130', color: '#94a3b8',
-                fontSize: '10px', padding: '3px 8px',
-                borderRadius: '4px', whiteSpace: 'nowrap', pointerEvents: 'none',
-              }}>
+              <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '4px', background: '#1e2130', color: '#94a3b8', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
                 Copied!
               </div>
             )}
@@ -520,11 +512,8 @@ function BlobReceipt({ receiptId, timestamp }) {
         </div>
       </div>
 
-      {/* Timestamp */}
       <div style={{ borderTop: '1px solid #1e2130', paddingTop: '16px' }}>
-        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
-          Received at
-        </p>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>Received at</p>
         <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#94a3b8' }}>
           {new Date(timestamp).toLocaleString()}
         </p>
@@ -552,57 +541,26 @@ function PasswordGateScreen({ form, onUnlock }) {
   }
 
   return (
-    <div style={{
-      minHeight: 'calc(100vh - 64px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexDirection: 'column', padding: '40px 24px',
-    }}>
+    <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', padding: '40px 24px' }}>
       <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-        <span style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 800,
-          fontSize: '18px', color: '#00d4ff', letterSpacing: '0.15em',
-        }}>
+        <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '18px', color: '#00d4ff', letterSpacing: '0.15em' }}>
           TUSK
         </span>
       </div>
 
-      <div style={{
-        background: '#0f1117', border: '1px solid #1e2130',
-        borderRadius: '16px', padding: '40px 32px',
-        width: '100%', maxWidth: '400px', textAlign: 'center',
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 20px',
-        }}>
+      <div style={{ background: '#0f1117', border: '1px solid #1e2130', borderRadius: '16px', padding: '40px 32px', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <Lock size={24} color="#00d4ff" />
         </div>
 
-        <h2 style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 700,
-          fontSize: '1.4rem', color: '#f8fafc', marginBottom: '8px',
-        }}>
+        <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.4rem', color: '#f8fafc', marginBottom: '8px' }}>
           This form is private
         </h2>
-        <p style={{
-          fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-          color: '#64748b', marginBottom: '28px', lineHeight: 1.6,
-        }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '14px', color: '#64748b', marginBottom: '28px', lineHeight: 1.6 }}>
           Enter the password to access this form
         </p>
 
-        <div
-          className={shaking ? undefined : undefined}
-          style={{
-            display: 'flex', alignItems: 'center',
-            background: '#0a0a0f', border: '1px solid #1e2130',
-            borderRadius: '8px', overflow: 'hidden',
-            marginBottom: '16px',
-            animation: shaking ? 'shake 0.5s ease' : 'none',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', background: '#0a0a0f', border: '1px solid #1e2130', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', animation: shaking ? 'shake 0.5s ease' : 'none' }}>
           <input
             type={showPw ? 'text' : 'password'}
             value={pw}
@@ -610,21 +568,9 @@ function PasswordGateScreen({ form, onUnlock }) {
             onKeyDown={(e) => e.key === 'Enter' && handleAccess()}
             placeholder="Enter password"
             autoFocus
-            style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              padding: '12px 16px', color: '#f8fafc',
-              fontFamily: 'DM Sans, sans-serif', fontSize: '14px',
-            }}
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', padding: '12px 16px', color: '#f8fafc', fontFamily: 'DM Sans, sans-serif', fontSize: '14px' }}
           />
-          <button
-            type="button"
-            onClick={() => setShowPw(!showPw)}
-            style={{
-              background: 'transparent', border: 'none',
-              padding: '0 14px', color: '#64748b', cursor: 'pointer',
-              display: 'flex', alignItems: 'center',
-            }}
-          >
+          <button type="button" onClick={() => setShowPw(!showPw)} style={{ background: 'transparent', border: 'none', padding: '0 14px', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
@@ -633,13 +579,7 @@ function PasswordGateScreen({ form, onUnlock }) {
           onClick={handleAccess}
           onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          style={{
-            width: '100%', background: '#00d4ff', border: 'none',
-            borderRadius: '8px', padding: '14px',
-            color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
-            fontSize: '15px', fontWeight: 700, cursor: 'pointer',
-            transition: 'opacity 0.15s',
-          }}
+          style={{ width: '100%', background: '#00d4ff', border: 'none', borderRadius: '8px', padding: '14px', color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif', fontSize: '15px', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.15s' }}
         >
           Access Form →
         </button>
@@ -652,23 +592,12 @@ function PasswordGateScreen({ form, onUnlock }) {
 
 function ClosedScreen() {
   return (
-    <div style={{
-      minHeight: 'calc(100vh - 64px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexDirection: 'column', gap: '16px', textAlign: 'center',
-      padding: '40px 24px',
-    }}>
+    <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', textAlign: 'center', padding: '40px 24px' }}>
       <div style={{ fontSize: '52px', lineHeight: 1 }}>😔</div>
-      <h2 style={{
-        fontFamily: 'Syne, sans-serif', fontWeight: 700,
-        fontSize: '1.6rem', color: '#f8fafc', marginBottom: 0,
-      }}>
+      <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.6rem', color: '#f8fafc', marginBottom: 0 }}>
         Submissions Closed
       </h2>
-      <p style={{
-        fontFamily: 'DM Sans, sans-serif', fontSize: '15px',
-        color: '#64748b', lineHeight: 1.6, maxWidth: '360px', margin: 0,
-      }}>
+      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '15px', color: '#64748b', lineHeight: 1.6, maxWidth: '360px', margin: 0 }}>
         This form is no longer accepting responses.
       </p>
     </div>
@@ -677,23 +606,12 @@ function ClosedScreen() {
 
 function LimitReachedScreen() {
   return (
-    <div style={{
-      minHeight: 'calc(100vh - 64px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexDirection: 'column', gap: '16px', textAlign: 'center',
-      padding: '40px 24px',
-    }}>
+    <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', textAlign: 'center', padding: '40px 24px' }}>
       <div style={{ fontSize: '52px', lineHeight: 1 }}>😔</div>
-      <h2 style={{
-        fontFamily: 'Syne, sans-serif', fontWeight: 700,
-        fontSize: '1.6rem', color: '#f8fafc', marginBottom: 0,
-      }}>
+      <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.6rem', color: '#f8fafc', marginBottom: 0 }}>
         Submission Limit Reached
       </h2>
-      <p style={{
-        fontFamily: 'DM Sans, sans-serif', fontSize: '15px',
-        color: '#64748b', lineHeight: 1.6, maxWidth: '360px', margin: 0,
-      }}>
+      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '15px', color: '#64748b', lineHeight: 1.6, maxWidth: '360px', margin: 0 }}>
         This form has reached its maximum number of submissions.
       </p>
     </div>
@@ -705,57 +623,29 @@ function LimitReachedScreen() {
 function SuccessScreen({ receiptId, onReset, navigate }) {
   return (
     <div style={{ textAlign: 'center', paddingTop: '8px' }}>
-      <div style={{
-        display: 'inline-block',
-        animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-        marginBottom: '28px',
-      }}>
+      <div style={{ display: 'inline-block', animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', marginBottom: '28px' }}>
         <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="40" cy="40" r="38" stroke="#00d4ff" strokeWidth="1.5" />
           <circle cx="40" cy="40" r="38" fill="rgba(0,212,255,0.06)" />
-          <path
-            d="M 23 40 L 35 52 L 57 28"
-            stroke="#00d4ff"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeDasharray="100"
-            strokeDashoffset="100"
-            style={{ animation: 'drawCheck 0.45s 0.35s ease forwards' }}
-          />
+          <path d="M 23 40 L 35 52 L 57 28" stroke="#00d4ff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="100" strokeDashoffset="100" style={{ animation: 'drawCheck 0.45s 0.35s ease forwards' }} />
         </svg>
       </div>
 
-      <h2 style={{
-        fontFamily: 'Syne, sans-serif', fontWeight: 700,
-        fontSize: '1.8rem', color: '#f8fafc', marginBottom: '10px',
-      }}>
+      <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.8rem', color: '#f8fafc', marginBottom: '10px' }}>
         Response Submitted
       </h2>
-      <p style={{
-        fontFamily: 'DM Sans, sans-serif', fontSize: '15px',
-        color: '#64748b', lineHeight: 1.6,
-      }}>
+      <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '15px', color: '#64748b', lineHeight: 1.6 }}>
         Your response has been received and securely stored.
       </p>
 
       <BlobReceipt receiptId={receiptId} timestamp={new Date().toISOString()} />
 
-      <div style={{
-        display: 'flex', gap: '12px', marginTop: '28px',
-        justifyContent: 'center', flexWrap: 'wrap',
-      }}>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '28px', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button
           onClick={onReset}
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#64748b')}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#1e2130')}
-          style={{
-            background: 'transparent', border: '1px solid #1e2130',
-            borderRadius: '8px', padding: '12px 24px',
-            color: '#f8fafc', fontFamily: 'DM Sans, sans-serif',
-            fontSize: '14px', fontWeight: 500,
-            cursor: 'pointer', transition: 'border-color 0.15s',
-          }}
+          style={{ background: 'transparent', border: '1px solid #1e2130', borderRadius: '8px', padding: '12px 24px', color: '#f8fafc', fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: 500, cursor: 'pointer', transition: 'border-color 0.15s' }}
         >
           Submit another response
         </button>
@@ -763,12 +653,7 @@ function SuccessScreen({ receiptId, onReset, navigate }) {
           onClick={() => navigate('/builder')}
           onMouseEnter={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#475569' }}
           onMouseLeave={(e) => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#1e2130' }}
-          style={{
-            background: 'transparent', border: '1px solid #1e2130',
-            borderRadius: '8px', padding: '12px 24px',
-            color: '#475569', fontFamily: 'DM Sans, sans-serif',
-            fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s',
-          }}
+          style={{ background: 'transparent', border: '1px solid #1e2130', borderRadius: '8px', padding: '12px 24px', color: '#475569', fontFamily: 'DM Sans, sans-serif', fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s' }}
         >
           View all forms
         </button>
@@ -827,6 +712,12 @@ export default function FormView() {
 
     fetchForm()
   }, [id])
+
+  // Load brand font when form arrives
+  useEffect(() => {
+    const font = form?.brand_kit?.font_family
+    if (font) loadFont(font)
+  }, [form?.brand_kit?.font_family])
 
   const setAnswer  = (fieldId, val) => setAnswers((prev) => ({ ...prev, [fieldId]: val }))
   const clearError = (fieldId) => setErrors((prev) => prev.filter(id => id !== fieldId))
@@ -889,18 +780,8 @@ export default function FormView() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{
-        minHeight: 'calc(100vh - 64px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <span style={{
-          width: 32, height: 32,
-          border: '3px solid #1e2130',
-          borderTopColor: '#00d4ff',
-          borderRadius: '50%',
-          display: 'inline-block',
-          animation: 'spin 0.65s linear infinite',
-        }} />
+      <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ width: 32, height: 32, border: '3px solid #1e2130', borderTopColor: '#00d4ff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.65s linear infinite' }} />
       </div>
     )
   }
@@ -912,33 +793,16 @@ export default function FormView() {
   // ── Not found ──────────────────────────────────────────────────────────────
   if (notFound) {
     return (
-      <div style={{
-        minHeight: 'calc(100vh - 64px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'column', gap: '20px', textAlign: 'center',
-        padding: '40px 24px',
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: '#0f1117', border: '1px solid #1e2130',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+      <div style={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', textAlign: 'center', padding: '40px 24px' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#0f1117', border: '1px solid #1e2130', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: '22px', color: '#475569' }}>⚠</span>
         </div>
-        <p style={{
-          fontFamily: 'DM Sans, sans-serif', fontSize: '16px',
-          color: '#64748b', maxWidth: '320px', lineHeight: 1.6,
-        }}>
+        <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '16px', color: '#64748b', maxWidth: '320px', lineHeight: 1.6 }}>
           Form not found or has been removed.
         </p>
         <button
           onClick={() => navigate('/builder')}
-          style={{
-            background: '#00d4ff', border: 'none', borderRadius: '8px',
-            padding: '12px 28px', color: '#0a0a0f',
-            fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: 700,
-            cursor: 'pointer',
-          }}
+          style={{ background: '#00d4ff', border: 'none', borderRadius: '8px', padding: '12px 28px', color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
         >
           Go to Builder
         </button>
@@ -946,33 +810,112 @@ export default function FormView() {
     )
   }
 
+  // ── Brand kit values (computed after early returns — not hooks) ─────────────
+  const kit          = form?.brand_kit || null
+  const primaryColor = kit?.primary_color    || '#00d4ff'
+  const bgColor      = kit?.background_color || undefined
+  const fontFamily   = kit?.font_family      || 'DM Sans'
+  const radius       = kit?.button_radius    ?? 8
+  const btnTextColor = isLight(primaryColor) ? '#0a0a0f' : '#f8fafc'
+  const headingFont  = kit ? `${fontFamily}, sans-serif` : 'Syne, sans-serif'
+  const bodyFont     = kit ? `${fontFamily}, sans-serif` : 'DM Sans, sans-serif'
+
+  const kitVars = kit ? {
+    '--brand-primary': primaryColor,
+    '--brand-bg':      kit.background_color || '#0a0a0f',
+    '--brand-surface': kit.surface_color    || '#0f1117',
+    '--brand-text':    kit.text_color       || '#f8fafc',
+    '--brand-font':    fontFamily,
+    '--brand-radius':  `${radius}px`,
+  } : {}
+
+  const showBranding = kit?.show_tusk_branding !== false
+
   // ── Form ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: 'calc(100vh - 64px)' }}>
+    <div style={{ minHeight: 'calc(100vh - 64px)', background: bgColor, ...kitVars }}>
+
+      {/* Full-width banner header */}
+      {kit?.header_style === 'banner' && !submitted && (
+        <div style={{ background: primaryColor, padding: isMobile ? '28px 20px 24px' : '40px 24px 32px' }}>
+          <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+            {kit.logo_url && (
+              <img src={kit.logo_url} alt="Logo" style={{ height: 36, marginBottom: 14, objectFit: 'contain', display: 'block' }} />
+            )}
+            <h1 style={{ fontFamily: headingFont, fontWeight: 700, fontSize: isMobile ? '1.5rem' : '2rem', color: btnTextColor, margin: 0 }}>
+              {form.title || 'Untitled Form'}
+            </h1>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: isMobile ? '32px 16px 60px' : '60px 24px 80px' }}>
 
-        {/* Form header */}
-        <div style={{ marginBottom: '40px' }}>
-          <h1 style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 700,
-            fontSize: isMobile ? '1.5rem' : '2rem', color: '#f8fafc', marginBottom: '10px',
-          }}>
-            {form.title || 'Untitled Form'}
-          </h1>
-          <p style={{
-            fontFamily: 'DM Sans, sans-serif', fontSize: '13px',
-            color: '#475569', marginBottom: '20px', display: 'flex',
-            alignItems: 'center', gap: '6px', flexWrap: 'wrap',
-          }}>
-            Powered by TUSK
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: '#00d4ff', display: 'inline-block', flexShrink: 0,
-            }} />
-            Responses securely stored
-          </p>
-          <div style={{ height: 1, background: 'rgba(0,212,255,0.3)' }} />
-        </div>
+        {/* Header — minimal and centered styles */}
+        {!submitted && kit?.header_style !== 'banner' && (
+          <div style={{ marginBottom: '40px', textAlign: kit?.header_style === 'centered' ? 'center' : 'left' }}>
+            {kit?.logo_url && (
+              <img
+                src={kit.logo_url} alt="Logo"
+                style={{
+                  height: 40, objectFit: 'contain',
+                  display: 'block',
+                  margin: kit?.header_style === 'centered' ? '0 auto 20px' : '0 0 16px',
+                }}
+              />
+            )}
+            <h1 style={{
+              fontFamily: headingFont, fontWeight: 700,
+              fontSize: isMobile ? '1.5rem' : '2rem',
+              color: 'var(--brand-text, #f8fafc)', marginBottom: '10px',
+            }}>
+              {form.title || 'Untitled Form'}
+            </h1>
+            {showBranding && (
+              <p style={{
+                fontFamily: bodyFont, fontSize: '13px',
+                color: 'var(--brand-text, #475569)', opacity: 0.5,
+                marginBottom: '20px',
+                display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+                justifyContent: kit?.header_style === 'centered' ? 'center' : 'flex-start',
+              }}>
+                Powered by TUSK
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: primaryColor, display: 'inline-block', flexShrink: 0 }} />
+                Responses securely stored
+              </p>
+            )}
+            <div style={{ height: 1, background: primaryColor, opacity: 0.3 }} />
+          </div>
+        )}
+
+        {/* After banner: subtitle + divider */}
+        {!submitted && kit?.header_style === 'banner' && (
+          <div style={{ marginBottom: '32px' }}>
+            {showBranding && (
+              <p style={{ fontFamily: bodyFont, fontSize: '13px', color: 'var(--brand-text, #475569)', opacity: 0.45, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                Powered by TUSK
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: primaryColor, display: 'inline-block', flexShrink: 0 }} />
+                Responses securely stored
+              </p>
+            )}
+            <div style={{ height: 1, background: primaryColor, opacity: 0.3 }} />
+          </div>
+        )}
+
+        {/* Default header — no brand kit */}
+        {!submitted && !kit && (
+          <div style={{ marginBottom: '40px' }}>
+            <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: isMobile ? '1.5rem' : '2rem', color: '#f8fafc', marginBottom: '10px' }}>
+              {form.title || 'Untitled Form'}
+            </h1>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '13px', color: '#475569', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              Powered by TUSK
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00d4ff', display: 'inline-block', flexShrink: 0 }} />
+              Responses securely stored
+            </p>
+            <div style={{ height: 1, background: 'rgba(0,212,255,0.3)' }} />
+          </div>
+        )}
 
         {/* Success or form */}
         {submitted ? (
@@ -985,9 +928,9 @@ export default function FormView() {
               <div key={field.id} style={{ marginBottom: '32px' }}>
                 <label style={{
                   display: 'block',
-                  fontFamily: 'DM Sans, sans-serif',
+                  fontFamily: bodyFont,
                   fontSize: '15px', fontWeight: 500,
-                  color: '#f8fafc', marginBottom: '10px',
+                  color: 'var(--brand-text, #f8fafc)', marginBottom: '10px',
                 }}>
                   {field.label}
                   {field.required && (
@@ -1002,13 +945,11 @@ export default function FormView() {
                   error={errors.includes(field.id)}
                   onClearError={() => clearError(field.id)}
                   formId={id}
+                  primaryColor={primaryColor}
                 />
 
                 {errors.includes(field.id) && (
-                  <p style={{
-                    fontFamily: 'DM Sans, sans-serif', fontSize: '12px',
-                    color: '#ef4444', marginTop: '6px',
-                  }}>
+                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: '#ef4444', marginTop: '6px' }}>
                     This field is required
                   </p>
                 )}
@@ -1022,26 +963,25 @@ export default function FormView() {
               onMouseEnter={(e) => !submitting && (e.currentTarget.style.opacity = '0.9')}
               onMouseLeave={(e) => !submitting && (e.currentTarget.style.opacity = '1')}
               style={{
-                width: '100%', background: '#00d4ff', border: 'none',
-                borderRadius: '8px', padding: '16px',
+                width: '100%', background: primaryColor, border: 'none',
+                borderRadius: radius,
+                padding: '16px',
                 minHeight: isMobile ? 52 : undefined,
-                color: '#0a0a0f', fontFamily: 'DM Sans, sans-serif',
+                color: btnTextColor, fontFamily: bodyFont,
                 fontSize: '16px', fontWeight: 700,
                 cursor: submitting ? 'default' : 'pointer',
                 opacity: submitting ? 0.8 : 1,
                 transition: 'opacity 0.15s',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: '10px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
               }}
             >
               {submitting ? (
                 <>
                   <span style={{
                     width: 18, height: 18,
-                    border: '2.5px solid rgba(10,10,15,0.3)',
-                    borderTopColor: '#0a0a0f',
-                    borderRadius: '50%',
-                    display: 'inline-block',
+                    border: `2.5px solid ${isLight(primaryColor) ? 'rgba(10,10,15,0.3)' : 'rgba(248,250,252,0.3)'}`,
+                    borderTopColor: btnTextColor,
+                    borderRadius: '50%', display: 'inline-block',
                     animation: 'spin 0.65s linear infinite',
                   }} />
                   Storing your response…
@@ -1050,6 +990,22 @@ export default function FormView() {
                 'Submit Response →'
               )}
             </button>
+
+            {/* Brand footer */}
+            {kit && (kit.custom_footer_text || showBranding) && (
+              <div style={{ marginTop: 48, textAlign: 'center' }}>
+                {kit.custom_footer_text && (
+                  <p style={{ fontFamily: bodyFont, fontSize: 12, color: 'var(--brand-text, #64748b)', opacity: 0.5, marginBottom: 4 }}>
+                    {kit.custom_footer_text}
+                  </p>
+                )}
+                {showBranding && (
+                  <p style={{ fontFamily: bodyFont, fontSize: 11, color: 'var(--brand-text, #64748b)', opacity: 0.3, letterSpacing: '0.05em' }}>
+                    Built with TUSK
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
