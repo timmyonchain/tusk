@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, memo, useMemo, useCallback } from 'react'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -781,7 +781,7 @@ function renderFieldPreview(field, { surface, text, primary, font, mutedColor })
 
 // ─── Form preview (live brand kit preview) ────────────────────────────────────
 
-function FormPreview({ form, kit }) {
+const FormPreview = memo(function FormPreview({ form, kit }) {
   const bg          = kit.background_color || '#0a0a0f'
   const surface     = kit.surface_color    || '#0f1117'
   const primary     = kit.primary_color    || '#00d4ff'
@@ -917,31 +917,48 @@ function FormPreview({ form, kit }) {
   )
 }
 
+, (prev, next) => {
+  if (prev.form.title !== next.form.title) return false
+  if (prev.form.fields.length !== next.form.fields.length) return false
+  if (prev.form.fields !== next.form.fields) return false
+  const pk = prev.kit, nk = next.kit
+  return pk.primary_color === nk.primary_color &&
+    pk.background_color === nk.background_color &&
+    pk.surface_color === nk.surface_color &&
+    pk.text_color === nk.text_color &&
+    pk.font_family === nk.font_family &&
+    pk.button_radius === nk.button_radius &&
+    pk.header_style === nk.header_style &&
+    pk.logo_url === nk.logo_url &&
+    pk.show_tusk_branding === nk.show_tusk_branding &&
+    pk.custom_footer_text === nk.custom_footer_text
+})
+
 // ─── Brand kit panel ──────────────────────────────────────────────────────────
 
-function BrandKitPanel({ kit, onChange, publishedFormId, onSave, saving, mobile = false }) {
+function BrandKitPanel({ kit, onChange, formId, publishedFormId, onSave, saving, mobile = false }) {
   const logoRef             = useRef(null)
   const [logoUploading, setLogoUploading] = useState(false)
 
-  const set = (key, val) => onChange({ ...kit, [key]: val, theme_preset: null })
+  const set = useCallback((key, val) => onChange(prev => ({ ...prev, [key]: val, theme_preset: null })), [onChange])
 
-  const applyTheme = (theme) => {
+  const applyTheme = useCallback((theme) => {
     const { name, ...rest } = theme
-    onChange({ ...kit, ...rest, theme_preset: name })
+    onChange(prev => ({ ...prev, ...rest, theme_preset: name }))
     loadFont(theme.font_family)
-  }
+  }, [onChange])
 
-  const handleLogoFile = async (file) => {
-    if (!publishedFormId || !file) return
+  const handleLogoFile = useCallback(async (file) => {
+    if (!file) return
     setLogoUploading(true)
     const ext = file.name.split('.').pop().toLowerCase()
-    const filePath = `logos/${publishedFormId}/logo.${ext}`
+    const filePath = `logos/${formId}/logo.${ext}`
     const { error } = await supabase.storage.from('uploads').upload(filePath, file, { cacheControl: '3600', upsert: true })
     if (error) { toast.error('Logo upload failed'); setLogoUploading(false); return }
     const { data } = supabase.storage.from('uploads').getPublicUrl(filePath)
-    onChange({ ...kit, logo_url: data.publicUrl })
+    onChange(prev => ({ ...prev, logo_url: data.publicUrl }))
     setLogoUploading(false)
-  }
+  }, [formId, onChange])
 
   const divider = <div style={{ height: 1, background: '#1e2130', margin: '20px 0' }} />
 
@@ -995,7 +1012,7 @@ function BrandKitPanel({ kit, onChange, publishedFormId, onSave, saving, mobile 
             <img src={kit.logo_url} alt="Logo" style={{ height: 36, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }} />
             <div style={{ flex: 1 }} />
             <button
-              onClick={() => onChange({ ...kit, logo_url: null })}
+              onClick={() => onChange(prev => ({ ...prev, logo_url: null }))}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
               style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, transition: 'color 0.15s' }}
@@ -1005,17 +1022,14 @@ function BrandKitPanel({ kit, onChange, publishedFormId, onSave, saving, mobile 
           </div>
         ) : (
           <button
-            onClick={() => {
-              if (!publishedFormId) { toast.error('Publish your form first to upload a logo'); return }
-              logoRef.current?.click()
-            }}
+            onClick={() => logoRef.current?.click()}
             disabled={logoUploading}
-            onMouseEnter={(e) => { if (publishedFormId) e.currentTarget.style.borderColor = '#64748b' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#64748b' }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1e2130' }}
             style={{
               width: '100%', background: '#0a0a0f',
               border: '1px dashed #1e2130', borderRadius: 10,
-              padding: '18px', cursor: publishedFormId ? 'pointer' : 'not-allowed',
+              padding: '18px', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
               opacity: logoUploading ? 0.6 : 1, transition: 'border-color 0.15s', marginBottom: 4,
             }}
@@ -1027,9 +1041,9 @@ function BrandKitPanel({ kit, onChange, publishedFormId, onSave, saving, mobile 
               </>
             ) : (
               <>
-                <Upload size={16} color={publishedFormId ? '#64748b' : '#3a4154'} />
-                <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: publishedFormId ? '#64748b' : '#3a4154', textAlign: 'center' }}>
-                  {publishedFormId ? 'Upload logo' : 'Publish form to upload logo'}
+                <Upload size={16} color="#64748b" />
+                <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+                  Upload logo
                 </span>
               </>
             )}
@@ -1429,11 +1443,13 @@ export default function Builder() {
   const [activeTab, setActiveTab]               = useState('canvas')
   const [brandKit, setBrandKit]                 = useState(DEFAULT_BRAND_KIT)
   const [publishedFormId, setPublishedFormId]   = useState(null)
+  const [logoFormId]                            = useState(() => crypto.randomUUID())
   const [builderView, setBuilderView]           = useState('build')
   const [savingKit, setSavingKit]               = useState(false)
 
   const selectedField = fields.find((f) => f.id === selectedFieldId) ?? null
   const hasContent    = fields.length > 0 || formTitle.trim().length > 0
+  const previewForm   = useMemo(() => ({ title: formTitle, fields }), [formTitle, fields])
 
   // Load font when brand kit font changes
   useEffect(() => {
@@ -1614,6 +1630,7 @@ export default function Builder() {
               mobile
               kit={brandKit}
               onChange={setBrandKit}
+              formId={publishedFormId || logoFormId}
               publishedFormId={publishedFormId}
               onSave={saveKit}
               saving={savingKit}
@@ -1792,11 +1809,12 @@ export default function Builder() {
             <BrandKitPanel
               kit={brandKit}
               onChange={setBrandKit}
+              formId={publishedFormId || logoFormId}
               publishedFormId={publishedFormId}
               onSave={saveKit}
               saving={savingKit}
             />
-            <FormPreview form={{ title: formTitle, fields }} kit={brandKit} />
+            <FormPreview form={previewForm} kit={brandKit} />
           </>
         )}
       </div>
